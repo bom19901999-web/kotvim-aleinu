@@ -115,6 +115,11 @@ def page(title, desc, body, prefix="", path=""):
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap">
 <link rel="stylesheet" href="{prefix}style.css">
+<link rel="icon" type="image/png" href="{prefix}favicon.png">
+<link rel="apple-touch-icon" href="{prefix}apple-touch-icon.png">
+<link rel="manifest" href="{prefix}manifest.webmanifest">
+<meta name="theme-color" content="#3a8fcd">
+<meta property="og:image" content="{e(config.SITE_URL.rstrip("/") + "/icon-512.png") if config.SITE_URL else ""}">
 {ads}
 </head>
 <body>
@@ -178,7 +183,10 @@ def main():
         shutil.rmtree(SITE)
     os.makedirs(os.path.join(SITE, "day"))
     os.makedirs(os.path.join(SITE, "a"))
-    for fn in ("style.css", "app.js"):
+    for fn in ("style.css", "app.js", "manifest.webmanifest", "icon-192.png", "icon-512.png",
+               "apple-touch-icon.png", "favicon.png"):
+        if not os.path.exists(os.path.join(ASSETS, fn)):
+            continue
         shutil.copy(os.path.join(ASSETS, fn), os.path.join(SITE, fn))
 
     now = datetime.now(timezone.utc)
