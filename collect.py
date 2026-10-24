@@ -92,9 +92,9 @@ def fetch_gdelt(query):
     for attempt in range(2):
         try:
             return http_json(url).get("articles", []) or []
-        except Exception as e:  # GDELT לפעמים איטי או מחזיר שגיאה זמנית
+        except Exception as e:  # GDELT לפעמים איטי או מגביל פניות (429)
             log(f"  GDELT error ({attempt + 1}/2): {e}")
-            time.sleep(6)
+            time.sleep(15 if "429" in str(e) else 6)
     return []
 
 
@@ -109,7 +109,7 @@ def gather():
         log(f"  {q}: {len(arts)}")
         out.extend(arts)
         if i < len(config.GDELT_QUERIES) - 1:
-            time.sleep(6)  # GDELT מבקש לא יותר מבקשה אחת ל-5 שניות
+            time.sleep(8)  # GDELT מבקש לא יותר מבקשה אחת ל-5 שניות
     return out
 
 

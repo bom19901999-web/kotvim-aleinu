@@ -5,30 +5,30 @@
 SITE_NAME = "כותבים עלינו"
 SITE_TAGLINE = "כל מה שהתקשורת בעולם כותבת על ישראל, מתורגם לעברית"
 # הכתובת המלאה של האתר אחרי שיש דומיין, למשל "https://kotvim-aleinu.co.il"
-SITE_URL = ""
+SITE_URL = "https://bom19901999-web.github.io/kotvim-aleinu"
 # הדומיין בלבד (בלי https), למשל "kotvim-aleinu.co.il". ריק = כתובת GitHub הרגילה
 CUSTOM_DOMAIN = ""
 # מזהה Google AdSense (למשל "ca-pub-1234567890"). ריק = בלי פרסומות
 ADSENSE_CLIENT = ""
+
+# ---- תגובות (Cusdis) ----
+# ה-App ID מ-cusdis.com. ריק = בלי כפתור תגובות
+CUSDIS_APP_ID = ""
+
+# ---- תרגום (Microsoft) ----
+MICROSOFT_REGION = "swedencentral"
 
 # ---- איסוף ----
 # כמה זמן אחורה לחפש בכל ריצה. חפיפה בין ריצות לא מזיקה: כפילויות מסוננות.
 TIMESPAN = "3h"
 # שאילתות ל-GDELT. הראשונה כללית, השאר מבטיחות כיסוי בשפות חשובות.
 _BASE = "(israel OR israeli OR netanyahu)"
+# 4 שאילתות בלבד (GDELT מגביל פניות). כל אחת מכסה קבוצת שפות.
 GDELT_QUERIES = [
     _BASE,
-    _BASE + " sourcelang:arabic",
-    _BASE + " sourcelang:french",
-    _BASE + " sourcelang:german",
-    _BASE + " sourcelang:spanish",
-    _BASE + " sourcelang:russian",
-    _BASE + " sourcelang:turkish",
-    _BASE + " sourcelang:italian",
-    _BASE + " sourcelang:persian",
-    _BASE + " sourcelang:chinese",
-    _BASE + " sourcelang:portuguese",
-    _BASE + " sourcelang:ukrainian",
+    _BASE + " (sourcelang:arabic OR sourcelang:persian OR sourcelang:turkish)",
+    _BASE + " (sourcelang:french OR sourcelang:german OR sourcelang:spanish OR sourcelang:italian OR sourcelang:portuguese)",
+    _BASE + " (sourcelang:russian OR sourcelang:ukrainian OR sourcelang:chinese OR sourcelang:japanese)",
 ]
 # לא להציג כלי תקשורת ישראליים — הרעיון הוא מה כותבים עלינו *בחוץ*
 EXCLUDE_SOURCE_COUNTRIES = {"Israel"}

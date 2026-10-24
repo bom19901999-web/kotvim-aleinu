@@ -4,7 +4,7 @@
   if (!list) return;
   var items = Array.prototype.slice.call(list.querySelectorAll(".item"));
   var days = Array.prototype.slice.call(list.querySelectorAll(".day"));
-  var chips = Array.prototype.slice.call(document.querySelectorAll(".chip"));
+  var chips = Array.prototype.slice.call(document.querySelectorAll(".tab"));
   var q = document.getElementById("q");
   var country = document.getElementById("country");
   var empty = document.getElementById("empty");
