@@ -10,6 +10,8 @@ SITE_URL = "https://bom19901999-web.github.io/kotvim-aleinu"
 CUSTOM_DOMAIN = ""
 # מזהה Google AdSense (למשל "ca-pub-1234567890"). ריק = בלי פרסומות
 ADSENSE_CLIENT = ""
+# מייל ליצירת קשר (מוצג באתר)
+CONTACT_EMAIL = "kotvimaleinu@gmail.com"
 
 # ---- תגובות (Cusdis) ----
 # ה-App ID מ-cusdis.com. ריק = בלי כפתור תגובות

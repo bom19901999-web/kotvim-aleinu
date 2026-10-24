@@ -25,6 +25,7 @@ MONTHS = ["ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יו�
 DAYS = ["שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת", "ראשון"]  # weekday(): Monday=0
 
 CUSDIS = getattr(config, "CUSDIS_APP_ID", "").strip()
+MAIL = getattr(config, "CONTACT_EMAIL", "").strip()
 
 e = html.escape
 
@@ -125,13 +126,14 @@ def page(title, desc, body, prefix="", path=""):
 <body>
 <header class="bar"><div class="bar-in">
   <a class="brand" href="{prefix}index.html">{e(config.SITE_NAME)}</a>
-  <nav><a href="{prefix}index.html">ראשי</a><a href="{prefix}archive.html">ארכיון</a><a href="{prefix}about.html">אודות</a></nav>
+  <nav><a href="{prefix}index.html">ראשי</a><a href="{prefix}archive.html">ארכיון</a><a href="{prefix}about.html">אודות</a><a href="{prefix}contact.html">צור קשר</a></nav>
 </div></header>
 <div class="wrap">
 {body}
 <footer>
   <div>הכותרות נאספות אוטומטית מכלי תקשורת ברחבי העולם ומתורגמות לעברית בתרגום מכונה. ייתכנו אי־דיוקים בתרגום. כל הזכויות על הכתבות שמורות למקורות; לחיצה על כותרת מובילה לכתבה המקורית.</div>
   <div>מקור הנתונים: <a href="https://www.gdeltproject.org/" target="_blank" rel="noopener">GDELT Project</a>.</div>
+  {('<div>יצירת קשר: <a href="mailto:' + e(MAIL) + '">' + e(MAIL) + '</a></div>') if MAIL else ''}
 </footer>
 </div>
 <script src="{prefix}app.js" defer></script>
@@ -240,10 +242,22 @@ def main():
 </div>"""
     write(os.path.join(SITE, "about.html"), page("אודות", "על האתר ואיך הוא עובד", about, path="about.html"))
 
+    contact = f"""<section class="hero"><h1>צור קשר</h1></section><div class="prose">
+<p>נשמח לשמוע מכם.</p>
+<ul>
+<li>מצאתם טעות בתרגום, או כותרת שלא שייכת לכאן?</li>
+<li>רוצים להציע כלי תקשורת שכדאי לעקוב אחריו?</li>
+<li>מעוניינים לפרסם באתר או לשתף פעולה?</li>
+</ul>
+<p>כתבו לנו: <a class="mail" href="mailto:{e(MAIL)}">{e(MAIL)}</a></p>
+<p>אנחנו משתדלים לענות לכל פנייה.</p>
+</div>"""
+    write(os.path.join(SITE, "contact.html"), page("צור קשר", "יצירת קשר עם " + config.SITE_NAME, contact, path="contact.html"))
+
     # SEO
     if config.SITE_URL:
         base = config.SITE_URL.rstrip("/") + "/"
-        urls = ["", "archive.html", "about.html"] + [f"day/{d.isoformat()}.html" for d in by_day]
+        urls = ["", "archive.html", "about.html", "contact.html"] + [f"day/{d.isoformat()}.html" for d in by_day]
         sm = ['<?xml version="1.0" encoding="UTF-8"?>', '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
         sm += [f"<url><loc>{e(base + u)}</loc></url>" for u in urls]
         sm.append("</urlset>")

@@ -76,3 +76,6 @@ a{color:inherit}
 .prose p{margin:0}
 
 footer{font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding:14px 4px 0;display:flex;flex-direction:column;gap:6px}
+.prose ul{margin:0;padding-inline-start:20px;display:flex;flex-direction:column;gap:4px}
+.mail{font-weight:800;color:var(--head);font-size:19px;overflow-wrap:anywhere}
+.bar nav{flex-wrap:wrap}
