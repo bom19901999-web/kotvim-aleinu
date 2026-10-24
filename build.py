@@ -26,6 +26,7 @@ DAYS = ["שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"
 
 CUSDIS = getattr(config, "CUSDIS_APP_ID", "").strip()
 MAIL = getattr(config, "CONTACT_EMAIL", "").strip()
+GOAT = getattr(config, "GOATCOUNTER", "").strip()
 
 e = html.escape
 
@@ -137,6 +138,7 @@ def page(title, desc, body, prefix="", path=""):
 </footer>
 </div>
 <script src="{prefix}app.js" defer></script>
+{('<script data-goatcounter="https://' + e(GOAT) + '.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>') if GOAT else ''}
 </body>
 </html>
 """

@@ -5,11 +5,13 @@
 SITE_NAME = "כותבים עלינו"
 SITE_TAGLINE = "כל מה שהתקשורת בעולם כותבת על ישראל, מתורגם לעברית"
 # הכתובת המלאה של האתר אחרי שיש דומיין, למשל "https://kotvim-aleinu.co.il"
-SITE_URL = "https://bom19901999-web.github.io/kotvim-aleinu"
+SITE_URL = "https://kotvim-aleinu.com"
 # הדומיין בלבד (בלי https), למשל "kotvim-aleinu.co.il". ריק = כתובת GitHub הרגילה
-CUSTOM_DOMAIN = ""
+CUSTOM_DOMAIN = "kotvim-aleinu.com"
 # מזהה Google AdSense (למשל "ca-pub-1234567890"). ריק = בלי פרסומות
 ADSENSE_CLIENT = ""
+# מונה מבקרים (goatcounter.com). ריק = בלי ספירה
+GOATCOUNTER = "kotvim"
 # מייל ליצירת קשר (מוצג באתר)
 CONTACT_EMAIL = "kotvimaleinu@gmail.com"
 
