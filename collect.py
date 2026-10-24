@@ -16,6 +16,7 @@ import sys
 import time
 import urllib.parse
 import urllib.request
+import urllib.error
 from datetime import datetime, timedelta, timezone
 
 import config
@@ -31,9 +32,11 @@ def log(*a):
     print(*a, flush=True)
 
 
-def http_json(url, data=None, timeout=40):
+def http_json(url, data=None, timeout=25, extra_headers=None):
     body = None
     headers = {"User-Agent": UA}
+    if extra_headers:
+        headers.update(extra_headers)
     if data is not None:
         body = json.dumps(data).encode("utf-8")
         headers["Content-Type"] = "application/json"
@@ -86,12 +89,12 @@ def fetch_gdelt(query):
         "timespan": config.TIMESPAN,
     }
     url = "https://api.gdeltproject.org/api/v2/doc/doc?" + urllib.parse.urlencode(params)
-    for attempt in range(3):
+    for attempt in range(2):
         try:
             return http_json(url).get("articles", []) or []
         except Exception as e:  # GDELT לפעמים איטי או מחזיר שגיאה זמנית
-            log(f"  GDELT error ({attempt + 1}/3): {e}")
-            time.sleep(8)
+            log(f"  GDELT error ({attempt + 1}/2): {e}")
+            time.sleep(6)
     return []
 
 
@@ -117,11 +120,15 @@ def translate(titles, src_codes):
         return []
     if os.environ.get("TRANSLATE_MOCK"):
         return ["[תרגום] " + t for t in titles]
-    key = os.environ.get("GOOGLE_TRANSLATE_KEY", "").strip()
+    # מפתח התרגום נשמר ב-GitHub בסוד בשם GOOGLE_TRANSLATE_KEY (או TRANSLATOR_KEY).
+    # מפתח של גוגל מתחיל ב-"AIza"; כל מפתח אחר נחשב מפתח של Microsoft Translator.
+    key = (os.environ.get("TRANSLATOR_KEY") or os.environ.get("GOOGLE_TRANSLATE_KEY") or "").strip()
     if not key:
-        log("  אין GOOGLE_TRANSLATE_KEY: הכותרות יישמרו בשפת המקור")
+        log("  אין מפתח תרגום: הכותרות יישמרו בשפת המקור")
         return [None] * len(titles)
-    url = "https://translation.googleapis.com/language/translate/v2?key=" + urllib.parse.quote(key)
+    if not key.startswith("AIza"):
+        return translate_microsoft(titles, key)
+    url ="https://translation.googleapis.com/language/translate/v2?key=" + urllib.parse.quote(key)
     result = [None] * len(titles)
     # מקבצים לפי שפת מקור כדי לעזור לתרגום, עד 100 כותרות בבקשה
     groups = {}
@@ -140,6 +147,31 @@ def translate(titles, src_codes):
                     result[i] = t.get("translatedText")
             except Exception as e:
                 log(f"  שגיאת תרגום ({code}): {e}")
+    return result
+
+
+def translate_microsoft(titles, key):
+    """Microsoft (Azure) Translator. שפת המקור מזוהה אוטומטית."""
+    url = "https://api.cognitive.microsofttranslator.com/translate?api-version=3.0&to=he"
+    headers = {"Ocp-Apim-Subscription-Key": key}
+    region = getattr(config, "MICROSOFT_REGION", "swedencentral").strip()  # האזור שנבחר ב-Azure
+    if region:
+        headers["Ocp-Apim-Subscription-Region"] = region
+    result = [None] * len(titles)
+    for s in range(0, len(titles), 50):
+        chunk = list(range(s, min(s + 50, len(titles))))
+        payload = [{"Text": titles[i]} for i in chunk]
+        try:
+            data = http_json(url, payload, extra_headers=headers)
+            for i, item in zip(chunk, data):
+                tr = item.get("translations") or []
+                if tr:
+                    result[i] = tr[0].get("text")
+        except urllib.error.HTTPError as e:
+            log(f"  שגיאת תרגום (Microsoft): {e.code} {e.read()[:300]!r}")
+            break
+        except Exception as e:
+            log(f"  שגיאת תרגום (Microsoft): {e}")
     return result
 
 
