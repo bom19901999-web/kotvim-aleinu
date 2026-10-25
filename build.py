@@ -121,13 +121,17 @@ def page(title, desc, body, prefix="", path=""):
 <link rel="apple-touch-icon" href="{prefix}apple-touch-icon.png">
 <link rel="manifest" href="{prefix}manifest.webmanifest">
 <meta name="theme-color" content="#3a8fcd">
-<meta property="og:image" content="{e(config.SITE_URL.rstrip("/") + "/icon-512.png") if config.SITE_URL else ""}">
+<meta property="og:image" content="{e(config.SITE_URL.rstrip("/") + "/og-image.png") if config.SITE_URL else ""}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:site_name" content="{e(config.SITE_NAME)}">
+<meta name="twitter:card" content="summary_large_image">
 {ads}
 </head>
 <body>
 <header class="bar"><div class="bar-in">
   <a class="brand" href="{prefix}index.html">{e(config.SITE_NAME)}</a>
-  <nav><a href="{prefix}index.html">ראשי</a><a href="{prefix}archive.html">ארכיון</a><a href="{prefix}about.html">אודות</a><a href="{prefix}contact.html">צור קשר</a></nav>
+  <nav><a href="{prefix}index.html">ראשי</a><a href="{prefix}archive.html">ארכיון</a><a href="{prefix}about.html">אודות</a><a href="{prefix}contact.html">צור קשר</a><button type="button" id="install" class="inst" hidden>📲 התקן אפליקציה</button></nav>
 </div></header>
 <div class="wrap">
 {body}
@@ -188,7 +192,7 @@ def main():
     os.makedirs(os.path.join(SITE, "day"))
     os.makedirs(os.path.join(SITE, "a"))
     for fn in ("style.css", "app.js", "manifest.webmanifest", "icon-192.png", "icon-512.png",
-               "apple-touch-icon.png", "favicon.png"):
+               "apple-touch-icon.png", "favicon.png", "og-image.png", "sw.js"):
         if not os.path.exists(os.path.join(ASSETS, fn)):
             continue
         shutil.copy(os.path.join(ASSETS, fn), os.path.join(SITE, fn))

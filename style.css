@@ -79,3 +79,4 @@ footer{font-size:13px;color:var(--muted);border-top:1px solid var(--line);paddin
 .prose ul{margin:0;padding-inline-start:20px;display:flex;flex-direction:column;gap:4px}
 .mail{font-weight:800;color:var(--head);font-size:19px;overflow-wrap:anywhere}
 .bar nav{flex-wrap:wrap}
+.inst{font:700 15px var(--font);color:var(--bar);background:#fff;border:none;border-radius:999px;padding:5px 12px;cursor:pointer}
