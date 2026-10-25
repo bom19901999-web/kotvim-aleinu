@@ -17,6 +17,8 @@ import time
 import urllib.parse
 import urllib.request
 import urllib.error
+import xml.etree.ElementTree as ET
+from email.utils import parsedate_to_datetime
 from datetime import datetime, timedelta, timezone
 
 import config
@@ -98,6 +100,65 @@ def fetch_gdelt(query):
     return []
 
 
+# ---------- Google News (מקור גיבוי) ----------
+_TLD_COUNTRY = {
+    "fr": "France", "de": "Germany", "es": "Spain", "it": "Italy", "ru": "Russia", "ua": "Ukraine",
+    "tr": "Turkey", "uk": "United Kingdom", "br": "Brazil", "ar": "Argentina", "mx": "Mexico",
+    "cl": "Chile", "co": "Colombia", "pt": "Portugal", "jp": "Japan", "cn": "China", "in": "India",
+    "au": "Australia", "ca": "Canada", "ch": "Switzerland", "at": "Austria", "be": "Belgium",
+    "nl": "Netherlands", "pl": "Poland", "gr": "Greece", "eg": "Egypt", "qa": "Qatar", "sa": "Saudi Arabia",
+    "ae": "United Arab Emirates", "jo": "Jordan", "lb": "Lebanon", "ir": "Iran", "ma": "Morocco",
+    "za": "South Africa", "ie": "Ireland", "se": "Sweden", "no": "Norway", "dk": "Denmark", "fi": "Finland",
+    "il": "Israel", "pk": "Pakistan", "kr": "South Korea", "ro": "Romania", "hu": "Hungary", "cz": "Czech Republic",
+}
+_ISRAELI = ("timesofisrael.com", "jpost.com", "ynetnews.com", "israelhayom.com", "i24news.tv", "haaretz.com",
+            "jns.org", "israelnationalnews.com", "allisrael.com", "israel21c.org", "jewishpress.com",
+            "unitedwithisrael.org", "tps.co.il", "kan.org.il", "israelheute.com")
+
+
+def _country_for(domain, fallback):
+    d = domain.lower()
+    if any(d == x or d.endswith("." + x) for x in _ISRAELI):
+        return "Israel"
+    tld = d.rsplit(".", 1)[-1]
+    return _TLD_COUNTRY.get(tld, fallback)
+
+
+def fetch_gnews(q, hl, gl, ceid, lang, country):
+    url = ("https://news.google.com/rss/search?" +
+           urllib.parse.urlencode({"q": q + " when:1d", "hl": hl, "gl": gl, "ceid": ceid}))
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": UA})
+        with urllib.request.urlopen(req, timeout=25) as r:
+            root = ET.fromstring(r.read())
+    except Exception as e:
+        log(f"  Google News error ({hl}): {e}")
+        return []
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=getattr(config, "GNEWS_MAX_AGE_HOURS", 6))
+    out = []
+    for it in root.iter("item"):
+        title = (it.findtext("title") or "").strip()
+        link = (it.findtext("link") or "").strip()
+        src = it.find("source")
+        src_name = (src.text or "").strip() if src is not None else ""
+        src_url = src.get("url", "") if src is not None else ""
+        if src_name and title.endswith(" - " + src_name):
+            title = title[: -len(src_name) - 3]
+        try:
+            when = parsedate_to_datetime(it.findtext("pubDate")).astimezone(timezone.utc)
+        except Exception:
+            continue
+        if when < cutoff or not link or not title:
+            continue
+        domain = urllib.parse.urlparse(src_url).netloc.replace("www.", "") or src_name
+        out.append({
+            "url": link, "title": title, "language": lang,
+            "sourcecountry": _country_for(domain, country), "domain": domain,
+            "seendate": when.strftime("%Y%m%dT%H%M%SZ"),
+        })
+    return out
+
+
 def gather():
     fixture = os.environ.get("GDELT_FIXTURE")
     if fixture:
@@ -106,11 +167,37 @@ def gather():
     out = []
     for i, q in enumerate(config.GDELT_QUERIES):
         arts = fetch_gdelt(q)
-        log(f"  {q}: {len(arts)}")
+        log(f"  GDELT {q}: {len(arts)}")
         out.extend(arts)
         if i < len(config.GDELT_QUERIES) - 1:
             time.sleep(8)  # GDELT מבקש לא יותר מבקשה אחת ל-5 שניות
+    for feed in getattr(config, "GNEWS_FEEDS", []):
+        arts = fetch_gnews(*feed)
+        log(f"  Google News {feed[1]}: {len(arts)}")
+        out.extend(arts)
+        time.sleep(1)
     return out
+
+
+# ---------- מגבלת תרגום יומית (כדי להישאר במכסה החינמית) ----------
+USAGE = os.path.join(ROOT, "data", "usage.json")
+
+
+def translations_left_today():
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    try:
+        with open(USAGE, encoding="utf-8") as f:
+            u = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        u = {}
+    used = u.get("n", 0) if u.get("date") == today else 0
+    return max(0, getattr(config, "DAILY_TRANSLATE_CAP", 10**9) - used), today, used
+
+
+def add_usage(today, used, n):
+    os.makedirs(os.path.dirname(USAGE), exist_ok=True)
+    with open(USAGE, "w", encoding="utf-8") as f:
+        json.dump({"date": today, "n": used + n}, f)
 
 
 # ---------- תרגום ----------
@@ -199,7 +286,7 @@ def main():
     log(f"במאגר: {len(store)} כותרות")
 
     raw = gather()
-    log(f"התקבלו מ-GDELT: {len(raw)}")
+    log(f"התקבלו מכל המקורות: {len(raw)}")
 
     fresh, seen_now = [], set()
     skipped = {"dup": 0, "country": 0, "irrelevant": 0}
@@ -248,10 +335,15 @@ def main():
     recent = (datetime.now(timezone.utc) - timedelta(hours=config.HOME_HOURS)).isoformat()
     room = max(0, config.MAX_NEW_PER_RUN - len(todo))
     todo += [x for x in store if x.get("he") is None and x["seen"] >= recent][:room]
+    left, today, used = translations_left_today()
+    if len(todo) > left:
+        log(f"מכסת תרגום יומית: נשארו {left}, השאר יוצג בשפת המקור")
+        todo = todo[:left]
     tr = translate([x["title"] for x in todo], [lang_info(x["lang"])[0] for x in todo])
     chars = sum(len(x["title"]) for x in todo)
     for x, t in zip(todo, tr):
         x["he"] = t
+    add_usage(today, used, sum(1 for t in tr if t))
 
     cutoff = (datetime.now(timezone.utc) - timedelta(days=config.KEEP_DAYS)).isoformat()
     items = [x for x in store + fresh if x["seen"] >= cutoff]

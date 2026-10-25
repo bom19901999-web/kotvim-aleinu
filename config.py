@@ -34,6 +34,23 @@ GDELT_QUERIES = [
     _BASE + " (sourcelang:french OR sourcelang:german OR sourcelang:spanish OR sourcelang:italian OR sourcelang:portuguese)",
     _BASE + " (sourcelang:russian OR sourcelang:ukrainian OR sourcelang:chinese OR sourcelang:japanese)",
 ]
+# Google News: מקור כותרות שני, למקרה ש-GDELT נתקע.
+# (חיפוש, hl, gl, ceid, שפה, מדינת ברירת מחדל)
+GNEWS_FEEDS = [
+    ("Israel", "en-US", "US", "US:en", "English", "United States"),
+    ("Israel", "en-GB", "GB", "GB:en", "English", "United Kingdom"),
+    ("Israël", "fr", "FR", "FR:fr", "French", "France"),
+    ("Israel", "de", "DE", "DE:de", "German", "Germany"),
+    ("Israel", "es-419", "MX", "MX:es-419", "Spanish", "Mexico"),
+    ("Israele", "it", "IT", "IT:it", "Italian", "Italy"),
+    ("إسرائيل", "ar", "EG", "EG:ar", "Arabic", "Egypt"),
+    ("Израиль", "ru", "RU", "RU:ru", "Russian", "Russia"),
+    ("İsrail", "tr", "TR", "TR:tr", "Turkish", "Turkey"),
+]
+GNEWS_MAX_AGE_HOURS = 6
+# מקסימום כותרות שמתורגמות ביום (כ-75 תווים לכותרת; 800 ביום ≈ 1.8 מיליון תווים בחודש, בתוך המכסה החינמית)
+DAILY_TRANSLATE_CAP = 800
+
 # לא להציג כלי תקשורת ישראליים — הרעיון הוא מה כותבים עלינו *בחוץ*
 EXCLUDE_SOURCE_COUNTRIES = {"Israel"}
 
