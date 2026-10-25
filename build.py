@@ -133,6 +133,7 @@ def page(title, desc, body, prefix="", path=""):
   <a class="brand" href="{prefix}index.html">{e(config.SITE_NAME)}</a>
   <nav><a href="{prefix}index.html">ראשי</a><a href="{prefix}archive.html">ארכיון</a><a href="{prefix}about.html">אודות</a><a href="{prefix}contact.html">צור קשר</a><button type="button" id="install" class="inst" hidden>📲 התקן אפליקציה</button></nav>
 </div></header>
+<div id="install-help" class="install-help" hidden><div class="ih-in"><span class="tip"></span><button type="button" class="close" aria-label="סגור">✕</button></div></div>
 <div class="wrap">
 {body}
 <footer>
