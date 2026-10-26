@@ -120,6 +120,7 @@ def page(title, desc, body, prefix="", path=""):
 <link rel="icon" type="image/png" href="{prefix}favicon.png">
 <link rel="apple-touch-icon" href="{prefix}apple-touch-icon.png">
 <link rel="manifest" href="{prefix}manifest.webmanifest">
+<link rel="alternate" type="application/rss+xml" title="{e(config.SITE_NAME)}" href="{prefix}feed.xml">
 <meta name="theme-color" content="#3a8fcd">
 <meta property="og:image" content="{e(config.SITE_URL.rstrip("/") + "/og-image.png") if config.SITE_URL else ""}">
 <meta property="og:image:width" content="1200">
@@ -173,6 +174,68 @@ def article_page(a):
         '<p><a class="back" href="../index.html">→ חזרה לכל הכותרות</a></p>'
     )
     return page(headline(a), headline(a), body, prefix="../", path=f"a/{a['id']}.html")
+
+
+# ---------- סיכום כל 3 שעות (לפרסום אוטומטי בפייסבוק דרך feed.xml) ----------
+ISO2 = {
+    "United States": "US", "United Kingdom": "GB", "France": "FR", "Germany": "DE", "Spain": "ES", "Italy": "IT",
+    "Russia": "RU", "Ukraine": "UA", "Turkey": "TR", "Iran": "IR", "Qatar": "QA", "Egypt": "EG",
+    "Saudi Arabia": "SA", "United Arab Emirates": "AE", "Jordan": "JO", "Lebanon": "LB", "Syria": "SY",
+    "Iraq": "IQ", "Kuwait": "KW", "Morocco": "MA", "Algeria": "DZ", "Tunisia": "TN", "China": "CN", "Japan": "JP",
+    "South Korea": "KR", "India": "IN", "Pakistan": "PK", "Indonesia": "ID", "Malaysia": "MY", "Australia": "AU",
+    "Canada": "CA", "Mexico": "MX", "Brazil": "BR", "Argentina": "AR", "Chile": "CL", "Colombia": "CO",
+    "Netherlands": "NL", "Belgium": "BE", "Switzerland": "CH", "Austria": "AT", "Poland": "PL", "Greece": "GR",
+    "Portugal": "PT", "Ireland": "IE", "Sweden": "SE", "Norway": "NO", "Denmark": "DK", "Finland": "FI",
+    "South Africa": "ZA", "Nigeria": "NG", "Serbia": "RS", "Romania": "RO", "Hungary": "HU", "Czech Republic": "CZ",
+    "Philippines": "PH", "Singapore": "SG", "Venezuela": "VE", "Peru": "PE", "Cyprus": "CY",
+}
+
+
+def flag(country):
+    c = ISO2.get(country)
+    return "".join(chr(0x1F1E6 + ord(ch) - 65) for ch in c) if c else "🌍"
+
+
+def build_feed(items, now):
+    """feed.xml: פריט אחד לכל חלון של 3 שעות שהסתיים, עם עד 5 כותרות ממדינות שונות."""
+    loc_now = now.astimezone(TZ)
+    end = loc_now.replace(minute=0, second=0, microsecond=0, hour=(loc_now.hour // 3) * 3)
+    base = (config.SITE_URL or "").rstrip("/")
+    link = base + "/?utm_source=facebook&utm_campaign=auto"
+    entries = []
+    for k in range(8):
+        w_end = end - timedelta(hours=3 * k)
+        w_start = w_end - timedelta(hours=3)
+        rows = [a for a in items if a.get("he") and w_start <= local(a["seen"]) < w_end
+                and lang_info(a["lang"])[0] != "he"]
+        picked, seen_c = [], set()
+        for a in rows:  # קודם מדינה אחת לכל כותרת, לגיוון
+            if a["country"] not in seen_c:
+                picked.append(a); seen_c.add(a["country"])
+            if len(picked) == 5:
+                break
+        if len(picked) < 2:
+            continue
+        lines = ["🌍 מה כתבו עלינו בעולם בשעות האחרונות:", ""]
+        for a in picked:
+            c = country_he(a["country"]) or a["domain"]
+            lines.append(f"{flag(a['country'])} {c}: \"{a['he'].strip()}\"")
+        lines += ["", f"כל הכותרות, מתורגמות לעברית ומתעדכנות כל רבע שעה 👇", link]
+        text = "\n".join(lines)
+        gid = w_end.strftime("%Y-%m-%dT%H")
+        entries.append(
+            "<item>"
+            f"<title>{e(f'מה כתבו עלינו בעולם, {w_start:%H:%M}-{w_end:%H:%M}')}</title>"
+            f"<link>{e(link)}</link>"
+            f'<guid isPermaLink="false">kotvim-{gid}</guid>'
+            f"<pubDate>{w_end.strftime('%a, %d %b %Y %H:%M:%S %z')}</pubDate>"
+            f"<description>{e(text)}</description>"
+            "</item>"
+        )
+    return ('<?xml version="1.0" encoding="UTF-8"?>\n<rss version="2.0"><channel>'
+            f"<title>{e(config.SITE_NAME)}</title><link>{e(base + '/')}</link>"
+            f"<description>{e(config.SITE_TAGLINE)}</description><language>he</language>"
+            + "".join(entries) + "</channel></rss>\n")
 
 
 def write(path, text):
@@ -273,6 +336,7 @@ def main():
     else:
         robots = "User-agent: *\nAllow: /\n"
     write(os.path.join(SITE, "robots.txt"), robots)
+    write(os.path.join(SITE, "feed.xml"), build_feed(items, now))
     if config.CUSTOM_DOMAIN:
         write(os.path.join(SITE, "CNAME"), config.CUSTOM_DOMAIN.strip() + "\n")
     open(os.path.join(SITE, ".nojekyll"), "w").close()
