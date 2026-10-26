@@ -183,21 +183,41 @@ def gather():
 USAGE = os.path.join(ROOT, "data", "usage.json")
 
 
-def translations_left_today():
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+def _load_usage():
     try:
         with open(USAGE, encoding="utf-8") as f:
-            u = json.load(f)
+            return json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
-        u = {}
-    used = u.get("n", 0) if u.get("date") == today else 0
-    return max(0, getattr(config, "DAILY_TRANSLATE_CAP", 10**9) - used), today, used
+        return {}
 
 
-def add_usage(today, used, n):
+def char_budget_today(store):
+    """כמה תווים מותר לתרגם עכשיו.
+    התקציב החודשי (מתחת ל-2 מיליון התווים החינמיים) מתחלק שווה בין הימים שנשארו בחודש,
+    כך שביום עמוס (בחירות, מלחמה) אפשר לתרגם הרבה יותר, בלי לחרוג מהחינם."""
+    now = datetime.now(timezone.utc)
+    today, month = now.strftime("%Y-%m-%d"), now.strftime("%Y-%m")
+    u = _load_usage()
+    if u.get("month") == month:
+        month_chars = u.get("chars", 0)
+        day_chars = u.get("day_chars", 0) if u.get("date") == today else 0
+    else:  # חודש חדש, או מעבר מהשיטה הישנה: מעריכים לפי מה שכבר תורגם החודש
+        month_chars = sum(len(x["title"]) for x in store
+                          if x.get("he") and x["he"] != x["title"] and x["seen"][:7] == month)
+        day_chars = 0
+    nxt = (now.replace(day=28) + timedelta(days=4)).replace(day=1)
+    days_left = (nxt.date() - now.date()).days  # כולל היום
+    budget = getattr(config, "MONTHLY_CHAR_BUDGET", 1_900_000)
+    per_day = max(0, budget - (month_chars - day_chars)) / max(1, days_left)
+    left = int(max(0, min(per_day - day_chars, budget - month_chars)))
+    return left, {"date": today, "month": month, "chars": month_chars, "day_chars": day_chars}
+
+
+def add_usage(state, chars):
     os.makedirs(os.path.dirname(USAGE), exist_ok=True)
+    state = dict(state, chars=state["chars"] + chars, day_chars=state["day_chars"] + chars)
     with open(USAGE, "w", encoding="utf-8") as f:
-        json.dump({"date": today, "n": used + n}, f)
+        json.dump(state, f)
 
 
 # ---------- תרגום ----------
@@ -335,15 +355,22 @@ def main():
     recent = (datetime.now(timezone.utc) - timedelta(hours=config.HOME_HOURS)).isoformat()
     room = max(0, config.MAX_NEW_PER_RUN - len(todo))
     todo += [x for x in store if x.get("he") is None and x["seen"] >= recent][:room]
-    left, today, used = translations_left_today()
-    if len(todo) > left:
-        log(f"מכסת תרגום יומית: נשארו {left}, השאר יוצג בשפת המקור")
-        todo = todo[:left]
+    left, state = char_budget_today(store)
+    picked, total = [], 0
+    for x in todo:
+        if total + len(x["title"]) > left:
+            continue
+        picked.append(x)
+        total += len(x["title"])
+    if len(picked) < len(todo):
+        log(f"תקציב תרגום: נשארו היום {left} תווים, {len(todo) - len(picked)} כותרות יחכו לריצה הבאה")
+    todo = picked
     tr = translate([x["title"] for x in todo], [lang_info(x["lang"])[0] for x in todo])
-    chars = sum(len(x["title"]) for x in todo)
+    chars = sum(len(x["title"]) for x, t in zip(todo, tr) if t)
     for x, t in zip(todo, tr):
         x["he"] = t
-    add_usage(today, used, sum(1 for t in tr if t))
+    add_usage(state, chars)
+    log(f"תווים החודש: {state['chars'] + chars} | היום: {state['day_chars'] + chars}")
 
     cutoff = (datetime.now(timezone.utc) - timedelta(days=config.KEEP_DAYS)).isoformat()
     items = [x for x in store + fresh if x["seen"] >= cutoff]
