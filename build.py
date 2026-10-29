@@ -4,6 +4,10 @@ import html
 import json
 import os
 import shutil
+import csv
+import io
+import urllib.request
+import urllib.parse
 from collections import OrderedDict, Counter
 from datetime import datetime, timedelta, timezone
 
@@ -132,7 +136,7 @@ def page(title, desc, body, prefix="", path=""):
 <body>
 <header class="bar"><div class="bar-in">
   <a class="brand" href="{prefix}index.html">{e(config.SITE_NAME)}</a>
-  <nav><a href="{prefix}index.html">ראשי</a><a href="{prefix}archive.html">ארכיון</a><a href="{prefix}about.html">אודות</a><a href="{prefix}contact.html">צור קשר</a><button type="button" id="install" class="inst" hidden>📲 התקן אפליקציה</button></nav>
+  <nav><a href="{prefix}index.html">ראשי</a><a href="{prefix}archive.html">ארכיון</a><a href="{prefix}about.html">אודות</a><a href="{prefix}contact.html">צור קשר</a><a class="jc" href="{prefix}community.html" lang="en" dir="ltr">🌍 Jewish Community</a><button type="button" id="install" class="inst" hidden>📲 התקן אפליקציה</button></nav>
 </div></header>
 <div id="install-help" class="install-help" hidden><div class="ih-in"><span class="tip"></span><button type="button" class="close" aria-label="סגור">✕</button></div></div>
 <div class="wrap">
@@ -238,6 +242,125 @@ def build_feed(items, now):
             + "".join(entries) + "</channel></rss>\n")
 
 
+# ---------- Jewish Community: מדריך עסקים יהודיים בעולם ----------
+CATS = ["Real Estate", "Lawyers", "Doctors & Health", "Accounting & Finance", "Kosher Food & Restaurants",
+        "Contractors & Home", "Tech & IT", "Travel & Tourism", "Education & Tutors", "Beauty & Fashion",
+        "Events & Judaica", "Other"]
+
+
+def _pick(row, *words):
+    """מוצא עמודה לפי מילה בכותרת שלה (כדי שזה יעבוד עם כל טופס גוגל)."""
+    for k, v in row.items():
+        kl = (k or "").lower()
+        if any(w in kl for w in words):
+            return (v or "").strip()
+    return ""
+
+
+def load_community():
+    url = getattr(config, "COMMUNITY_SHEET_CSV", "").strip()
+    if not url:
+        return []
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "kotvim-aleinu"})
+        raw = urllib.request.urlopen(req, timeout=30).read().decode("utf-8-sig")
+    except Exception as ex:
+        print("מדריך הקהילה: לא הצלחתי לקרוא את הגיליון:", ex)
+        return []
+    out = []
+    for row in csv.DictReader(io.StringIO(raw)):
+        ok = _pick(row, "approved", "אושר", "מאושר").lower()
+        if ok not in ("yes", "y", "כן", "v", "✓", "✔", "true", "1"):
+            continue
+        name = _pick(row, "business name", "name", "שם")
+        if not name:
+            continue
+        site = _pick(row, "website", "site", "אתר")
+        if site and not site.startswith(("http://", "https://")):
+            site = "https://" + site
+        out.append({
+            "name": name,
+            "cat": _pick(row, "category", "תחום") or "Other",
+            "country": _pick(row, "country", "מדינה"),
+            "city": _pick(row, "city", "עיר"),
+            "desc": _pick(row, "description", "about", "תיאור")[:300],
+            "phone": _pick(row, "phone", "whatsapp", "טלפון"),
+            "site": site,
+        })
+    out.sort(key=lambda r: (r["country"].lower(), r["city"].lower(), r["name"].lower()))
+    return out
+
+
+def community_page():
+    rows = load_community()
+    form = getattr(config, "COMMUNITY_FORM_URL", "").strip()
+    if form:
+        add_href = e(form)
+    else:
+        body_txt = ("Business name:\nCategory:\nCountry:\nCity:\nPhone / WhatsApp:\nWebsite:\n"
+                    "Short description:\n\nI agree that this business will be listed publicly on kotvim-aleinu.com")
+        add_href = e("mailto:" + MAIL + "?subject=" + urllib.parse.quote("Add my business - Jewish Community")
+                     + "&body=" + urllib.parse.quote(body_txt))
+    cards = []
+    for r in rows:
+        tel = "".join(ch for ch in r["phone"] if ch.isdigit() or ch == "+")
+        links = []
+        if tel:
+            links.append(f'<a href="tel:{e(tel)}">📞 {e(r["phone"])}</a>')
+            links.append(f'<a href="https://wa.me/{e(tel.lstrip("+"))}" target="_blank" rel="noopener">💬 WhatsApp</a>')
+        if r["site"]:
+            links.append(f'<a href="{e(r["site"])}" target="_blank" rel="noopener nofollow">🌐 Website</a>')
+        cards.append(
+            f'<article class="biz" data-country="{e(r["country"])}" data-city="{e(r["city"])}" data-cat="{e(r["cat"])}">'
+            f'<h3>{e(r["name"])}</h3><p class="bmeta"><b>{e(r["cat"])}</b> · {e(r["city"])}{", " if r["city"] and r["country"] else ""}{e(r["country"])}</p>'
+            + (f'<p class="bdesc">{e(r["desc"])}</p>' if r["desc"] else "")
+            + (f'<p class="blinks">{" ".join(links)}</p>' if links else "") + "</article>")
+    countries = sorted({r["country"] for r in rows if r["country"]})
+    cats = [c for c in CATS if c in {r["cat"] for r in rows}] + sorted({r["cat"] for r in rows} - set(CATS))
+    opt = lambda vals, first: f'<option value="">{first}</option>' + "".join(f'<option>{e(v)}</option>' for v in vals)
+    if rows:
+        listing = (
+            '<div class="controls"><div class="row">'
+            '<input id="bq" type="search" placeholder="Search: lawyer, Paris, kosher…" aria-label="Search">'
+            f'<select id="bcountry" aria-label="Country">{opt(countries, "All countries")}</select>'
+            f'<select id="bcat" aria-label="Category">{opt(cats, "All categories")}</select>'
+            '</div></div>'
+            f'<p class="stats"><b id="bn">{len(rows)}</b> businesses in <b>{len(countries)}</b> countries</p>'
+            '<main id="blist" class="blist">' + "".join(cards) + "</main>"
+            '<p id="bempty" class="empty" hidden>No businesses match. Try another search.</p>')
+    else:
+        listing = ('<div class="bfirst"><p><b>The directory is just starting.</b></p>'
+                   '<p>Are you a Jewish professional or business owner anywhere in the world? '
+                   'Be among the first to join, it is free.</p></div>')
+    body = f"""<div lang="en" dir="ltr" class="community">
+<section class="hero"><h1>🌍 Jewish Community</h1>
+<p class="tagline">Jewish professionals &amp; businesses around the world, by country, city and field.</p>
+<p class="stats">Real estate, lawyers, doctors, kosher food, contractors and more. Find a member of the community wherever you are.</p>
+<p><a class="go addbiz" href="{add_href}" target="_blank" rel="noopener">➕ Add your business (free)</a></p></section>
+{listing}
+<div class="prose bnote"><p>Every listing is added only at the request of the business itself and checked by us before publishing. We never publish private home addresses.
+To update or remove a listing, email <a href="mailto:{e(MAIL)}">{e(MAIL)}</a>.</p></div>
+</div>
+<script>
+(function(){{
+  var q=document.getElementById('bq'); if(!q) return;
+  var c=document.getElementById('bcountry'), k=document.getElementById('bcat');
+  var cards=[].slice.call(document.querySelectorAll('.biz')), n=document.getElementById('bn'), em=document.getElementById('bempty');
+  function run(){{
+    var t=q.value.trim().toLowerCase(), shown=0;
+    cards.forEach(function(x){{
+      var ok=(!c.value||x.dataset.country===c.value)&&(!k.value||x.dataset.cat===k.value)&&(!t||x.textContent.toLowerCase().indexOf(t)>-1);
+      x.hidden=!ok; if(ok) shown++;
+    }});
+    n.textContent=shown; em.hidden=shown>0;
+  }}
+  q.addEventListener('input',run); c.addEventListener('change',run); k.addEventListener('change',run);
+}})();
+</script>"""
+    return page("Jewish Community", "Directory of Jewish professionals and businesses around the world, by country, city and field.",
+                body, path="community.html")
+
+
 def write(path, text):
     with open(path, "w", encoding="utf-8") as f:
         f.write(text)
@@ -323,11 +446,12 @@ def main():
 <p>אנחנו משתדלים לענות לכל פנייה.</p>
 </div>"""
     write(os.path.join(SITE, "contact.html"), page("צור קשר", "יצירת קשר עם " + config.SITE_NAME, contact, path="contact.html"))
+    write(os.path.join(SITE, "community.html"), community_page())
 
     # SEO
     if config.SITE_URL:
         base = config.SITE_URL.rstrip("/") + "/"
-        urls = ["", "archive.html", "about.html", "contact.html"] + [f"day/{d.isoformat()}.html" for d in by_day]
+        urls = ["", "archive.html", "about.html", "contact.html", "community.html"] + [f"day/{d.isoformat()}.html" for d in by_day]
         sm = ['<?xml version="1.0" encoding="UTF-8"?>', '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
         sm += [f"<url><loc>{e(base + u)}</loc></url>" for u in urls]
         sm.append("</urlset>")
