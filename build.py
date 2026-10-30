@@ -396,7 +396,9 @@ def main():
     hero = (
         '<section class="hero">'
         f'<p class="tagline">{e(config.SITE_TAGLINE)}</p>'
-        f'<p class="stats"><b>{len(home)}</b> כותרות ב־{config.HOME_HOURS} שעות · '
+        + (f'<div class="cta-box"><p class="cta1">{e(config.SITE_CTA_TITLE)}</p>'
+           f'<p class="cta2">{e(config.SITE_CTA_TEXT)}</p></div>' if getattr(config, "SITE_CTA_TITLE", "") else "")
+        + f'<p class="stats"><b>{len(home)}</b> כותרות ב־{config.HOME_HOURS} שעות · '
         f'<b>{countries_n}</b> מדינות · <b>{langs_n}</b> שפות · עודכן ב־<b class="time">{updated:%H:%M}</b></p>'
         "</section>"
     )

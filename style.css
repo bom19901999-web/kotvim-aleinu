@@ -99,3 +99,7 @@ footer{font-size:13px;color:var(--muted);border-top:1px solid var(--line);paddin
 .bfirst{background:var(--row);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:6px}
 .bfirst p{margin:0}
 .bnote{font-size:14px;color:var(--muted)}
+.cta-box{border-inline-start:5px solid var(--red);background:var(--row);border-radius:8px;padding:10px 14px;display:flex;flex-direction:column;gap:4px;margin:4px 0}
+.cta-box p{margin:0}
+.cta1{font-size:20px;font-weight:800;color:var(--head)}
+.cta2{font-size:16px;font-weight:600}
