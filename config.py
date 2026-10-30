@@ -48,6 +48,57 @@ GNEWS_FEEDS = [
     ("İsrail", "tr", "TR", "TR:tr", "Turkish", "Turkey"),
 ]
 GNEWS_MAX_AGE_HOURS = 6
+# מהדורות נוספות של Google News, לגיוון המדינות. בכל ריצה נבדקות רק חלק מהן (בסבב),
+# כדי לא להעמיס על גוגל; כל מהדורה נבדקת בערך פעם בשעה.
+GNEWS_EXTRA = [
+    # ערבית
+    ("إسرائيل", "ar", "SA", "SA:ar", "Arabic", "Saudi Arabia"),
+    ("إسرائيل", "ar", "AE", "AE:ar", "Arabic", "United Arab Emirates"),
+    ("إسرائيل", "ar", "LB", "LB:ar", "Arabic", "Lebanon"),
+    ("Israël", "fr", "MA", "MA:fr", "French", "Morocco"),
+    # פורטוגזית
+    ("Israel", "pt-BR", "BR", "BR:pt-419", "Portuguese", "Brazil"),
+    ("Israel", "pt-PT", "PT", "PT:pt-150", "Portuguese", "Portugal"),
+    # ספרדית
+    ("Israel", "es", "ES", "ES:es", "Spanish", "Spain"),
+    ("Israel", "es-419", "AR", "AR:es-419", "Spanish", "Argentina"),
+    ("Israel", "es-419", "CO", "CO:es-419", "Spanish", "Colombia"),
+    ("Israel", "es-419", "CL", "CL:es-419", "Spanish", "Chile"),
+    # אנגלית: אפריקה, אסיה, אוקיאניה, אמריקה
+    ("Israel", "en-ZA", "ZA", "ZA:en", "English", "South Africa"),
+    ("Israel", "en-NG", "NG", "NG:en", "English", "Nigeria"),
+    ("Israel", "en-KE", "KE", "KE:en", "English", "Kenya"),
+    ("Israel", "en-GH", "GH", "GH:en", "English", "Ghana"),
+    ("Israel", "en-IN", "IN", "IN:en", "English", "India"),
+    ("Israel", "en-PK", "PK", "PK:en", "English", "Pakistan"),
+    ("Israel", "en-AU", "AU", "AU:en", "English", "Australia"),
+    ("Israel", "en-CA", "CA", "CA:en", "English", "Canada"),
+    ("Israel", "en-IE", "IE", "IE:en", "English", "Ireland"),
+    ("Israel", "en-SG", "SG", "SG:en", "English", "Singapore"),
+    ("Israel", "en-PH", "PH", "PH:en", "English", "Philippines"),
+    ("Israel", "en-NZ", "NZ", "NZ:en", "English", "New Zealand"),
+    # אירופה
+    ("Israël", "nl", "NL", "NL:nl", "Dutch", "Netherlands"),
+    ("Izrael", "pl", "PL", "PL:pl", "Polish", "Poland"),
+    ("Ισραήλ", "el", "GR", "GR:el", "Greek", "Greece"),
+    ("Ізраїль", "uk", "UA", "UA:uk", "Ukrainian", "Ukraine"),
+    ("Israel", "sv", "SE", "SE:sv", "Swedish", "Sweden"),
+    ("Israel", "no", "NO", "NO:no", "Norwegian", "Norway"),
+    ("Izrael", "cs", "CZ", "CZ:cs", "Czech", "Czech Republic"),
+    ("Izrael", "hu", "HU", "HU:hu", "Hungarian", "Hungary"),
+    ("Israel", "ro", "RO", "RO:ro", "Romanian", "Romania"),
+    ("Israel", "de", "AT", "AT:de", "German", "Austria"),
+    ("Israel", "de", "CH", "CH:de", "German", "Switzerland"),
+    ("Israël", "fr", "BE", "BE:fr", "French", "Belgium"),
+    # אסיה
+    ("イスラエル", "ja", "JP", "JP:ja", "Japanese", "Japan"),
+    ("이스라엘", "ko", "KR", "KR:ko", "Korean", "South Korea"),
+    ("以色列", "zh-CN", "CN", "CN:zh-Hans", "Chinese", "China"),
+    ("以色列", "zh-TW", "TW", "TW:zh-Hant", "Chinese", "Taiwan"),
+    ("Israel", "id", "ID", "ID:id", "Indonesian", "Indonesia"),
+    ("इज़राइल", "hi", "IN", "IN:hi", "Hindi", "India"),
+]
+GNEWS_EXTRA_PER_RUN = 10
 # מקסימום כותרות שמתורגמות ביום (כ-75 תווים לכותרת; 800 ביום ≈ 1.8 מיליון תווים בחודש, בתוך המכסה החינמית)
 # תקציב תרגום חודשי בתווים (Azure חינם עד 2,000,000; משאירים מרווח ביטחון).
 # מתחלק אוטומטית בין הימים שנשארו בחודש, כך שיום עמוס מקבל יותר.
@@ -79,7 +130,7 @@ TITLE_KEYWORDS = [
 
 # ---- הגבלות עלות ושמירה ----
 # מקסימום כותרות חדשות שמתורגמות בריצה אחת (ריצה כל 15 דקות = 96 ריצות ביום)
-MAX_NEW_PER_RUN = 150
+MAX_NEW_PER_RUN = 200
 # כמה ימים לשמור בארכיון
 KEEP_DAYS = 30
 # בעמוד הראשי: כותרות מ-X השעות האחרונות, עד Y כותרות

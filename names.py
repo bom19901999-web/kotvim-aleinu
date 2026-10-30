@@ -37,7 +37,7 @@ COUNTRIES = {
     "Poland": "פולין", "Czech Republic": "צ'כיה", "Hungary": "הונגריה", "Romania": "רומניה",
     "Greece": "יוון", "Cyprus": "קפריסין", "Portugal": "פורטוגל", "Ireland": "אירלנד",
     "Sweden": "שוודיה", "Norway": "נורווגיה", "Denmark": "דנמרק", "Finland": "פינלנד",
-    "South Africa": "דרום אפריקה", "Nigeria": "ניגריה", "Kenya": "קניה", "Ethiopia": "אתיופיה",
+    "South Africa": "דרום אפריקה", "Nigeria": "ניגריה", "Kenya": "קניה", "Ethiopia": "אתיופיה", "Estonia": "אסטוניה", "Latvia": "לטביה", "Lithuania": "ליטא", "Slovakia": "סלובקיה", "Slovenia": "סלובניה", "Ghana": "גאנה", "Tanzania": "טנזניה", "Uganda": "אוגנדה", "Zimbabwe": "זימבבואה", "Senegal": "סנגל",
     "Azerbaijan": "אזרבייג'ן", "Georgia": "גאורגיה", "Armenia": "ארמניה", "Kazakhstan": "קזחסטן",
     "Belarus": "בלארוס", "Serbia": "סרביה", "Croatia": "קרואטיה", "Bulgaria": "בולגריה",
     "Philippines": "הפיליפינים", "Thailand": "תאילנד", "Vietnam": "וייטנאם", "Singapore": "סינגפור",

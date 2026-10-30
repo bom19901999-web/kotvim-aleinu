@@ -110,6 +110,12 @@ _TLD_COUNTRY = {
     "ae": "United Arab Emirates", "jo": "Jordan", "lb": "Lebanon", "ir": "Iran", "ma": "Morocco",
     "za": "South Africa", "ie": "Ireland", "se": "Sweden", "no": "Norway", "dk": "Denmark", "fi": "Finland",
     "il": "Israel", "pk": "Pakistan", "kr": "South Korea", "ro": "Romania", "hu": "Hungary", "cz": "Czech Republic",
+    "ng": "Nigeria", "ke": "Kenya", "gh": "Ghana", "tz": "Tanzania", "ug": "Uganda", "zw": "Zimbabwe",
+    "et": "Ethiopia", "sg": "Singapore", "ph": "Philippines", "my": "Malaysia", "id": "Indonesia",
+    "nz": "New Zealand", "pe": "Peru", "ve": "Venezuela", "tw": "Taiwan", "hk": "Hong Kong", "kw": "Kuwait",
+    "om": "Oman", "bh": "Bahrain", "iq": "Iraq", "dz": "Algeria", "tn": "Tunisia", "sn": "Senegal",
+    "gr": "Greece", "bg": "Bulgaria", "rs": "Serbia", "hr": "Croatia", "sk": "Slovakia", "si": "Slovenia",
+    "lt": "Lithuania", "lv": "Latvia", "ee": "Estonia", "th": "Thailand", "vn": "Vietnam", "bd": "Bangladesh",
 }
 _ISRAELI = ("timesofisrael.com", "jpost.com", "ynetnews.com", "israelhayom.com", "i24news.tv", "haaretz.com",
             "jns.org", "israelnationalnews.com", "allisrael.com", "israel21c.org", "jewishpress.com",
@@ -171,7 +177,14 @@ def gather():
         out.extend(arts)
         if i < len(config.GDELT_QUERIES) - 1:
             time.sleep(8)  # GDELT מבקש לא יותר מבקשה אחת ל-5 שניות
-    for feed in getattr(config, "GNEWS_FEEDS", []):
+    feeds = list(getattr(config, "GNEWS_FEEDS", []))
+    extra = list(getattr(config, "GNEWS_EXTRA", []))
+    if extra:  # סבב: בכל ריצה חלק אחר מהמהדורות הנוספות
+        k = max(1, getattr(config, "GNEWS_EXTRA_PER_RUN", 10))
+        rounds = (len(extra) + k - 1) // k
+        start = (int(time.time() // 900) % rounds) * k
+        feeds += extra[start:start + k]
+    for feed in feeds:
         arts = fetch_gnews(*feed)
         log(f"  Google News {feed[1]}: {len(arts)}")
         out.extend(arts)
@@ -348,7 +361,20 @@ def main():
     fresh.sort(key=lambda x: x["seen"], reverse=True)
     if len(fresh) > config.MAX_NEW_PER_RUN:
         log(f"מגבלת עלות: מתרגמים רק {config.MAX_NEW_PER_RUN} מתוך {len(fresh)}")
-        fresh = fresh[:config.MAX_NEW_PER_RUN]
+        # גיוון: לוקחים לסירוגין מכל מדינה, כדי שמדינות גדולות לא ישתלטו על הרשימה
+        by_c = {}
+        for x in fresh:
+            by_c.setdefault(x["country"], []).append(x)
+        queues, picked = list(by_c.values()), []
+        while len(picked) < config.MAX_NEW_PER_RUN and queues:
+            for q in list(queues):
+                if q:
+                    picked.append(q.pop(0))
+                if not q:
+                    queues.remove(q)
+                if len(picked) >= config.MAX_NEW_PER_RUN:
+                    break
+        fresh = sorted(picked, key=lambda x: x["seen"], reverse=True)
 
     todo = [x for x in fresh if x["he"] is None]
     # כותרות שלא תורגמו בריצות קודמות (למשל לפני שהוגדר מפתח) — מנסים שוב, בתוך אותה מגבלה
