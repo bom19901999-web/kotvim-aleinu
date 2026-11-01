@@ -103,3 +103,14 @@ footer{font-size:13px;color:var(--muted);border-top:1px solid var(--line);paddin
 .cta-box p{margin:0}
 .cta1{font-size:20px;font-weight:800;color:var(--head)}
 .cta2{font-size:16px;font-weight:600}
+.amb{margin-inline-start:auto;font:700 14px var(--font);color:#fff;background:var(--bar);border:none;border-radius:999px;padding:4px 12px;cursor:pointer}
+.amb-box{margin-top:6px;padding:10px;border:1.5px solid var(--bar);border-radius:10px;background:var(--bg);display:flex;flex-direction:column;gap:8px}
+.amb-box p{margin:0}
+.amb-t{font-size:15px}
+.amb-box textarea{width:100%;font:inherit;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);resize:vertical}
+.amb-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.amb-row select{font:inherit;padding:6px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+.amb-go,.amb-open{font:700 15px var(--font);border-radius:8px;padding:8px 14px;cursor:pointer;text-decoration:none}
+.amb-go{background:var(--red);color:#fff;border:none}
+.amb-open{background:var(--head);color:#fff}
+.amb-n{font-size:13px;color:var(--muted)}

@@ -73,3 +73,51 @@
   q.addEventListener("input", apply);
   country.addEventListener("change", apply);
 })();
+
+/* כלי שגריר: כותבים תגובה בעברית, מתרגמים לשפת הכתבה ומדביקים בכתבה המקורית */
+(function () {
+  var LANGS = [["en","אנגלית"],["ar","ערבית"],["fr","צרפתית"],["es","ספרדית"],["de","גרמנית"],["ru","רוסית"],
+    ["tr","טורקית"],["it","איטלקית"],["pt","פורטוגזית"],["nl","הולנדית"],["pl","פולנית"],["el","יוונית"],
+    ["uk","אוקראינית"],["fa","פרסית"],["ur","אורדו"],["hi","הינדי"],["id","אינדונזית"],["ja","יפנית"],
+    ["ko","קוריאנית"],["zh-CN","סינית"],["vi","וייטנאמית"],["th","תאית"],["sv","שוודית"],["no","נורווגית"],
+    ["da","דנית"],["fi","פינית"],["cs","צ'כית"],["hu","הונגרית"],["ro","רומנית"],["bg","בולגרית"],
+    ["hr","קרואטית"],["sr","סרבית"],["sk","סלובקית"],["ms","מלאית"],["sw","סוואהילית"]];
+  function gt(code) { return code === "zh" ? "zh-CN" : code; }
+  document.addEventListener("click", function (ev) {
+    var btn = ev.target.closest && ev.target.closest(".amb");
+    if (!btn) return;
+    var art = btn.closest(".item");
+    var open = art.querySelector(".amb-box");
+    if (open) { open.remove(); return; }
+    var link = art.querySelector(".hl");
+    var code = art.dataset.lang;
+    if (!code || code === "he" || code === "xx") code = "en";
+    code = gt(code);
+    var box = document.createElement("div");
+    box.className = "amb-box";
+    var opts = LANGS.map(function (l) {
+      return '<option value="' + l[0] + '"' + (l[0] === code ? " selected" : "") + ">" + l[1] + "</option>";
+    }).join("");
+    if (!LANGS.some(function (l) { return l[0] === code; })) opts = '<option value="' + code + '" selected>' + code + "</option>" + opts;
+    box.innerHTML =
+      '<p class="amb-t"><b>כולנו שגרירים 🇮🇱</b> כתבו תגובה בעברית, תרגמו לשפת הכתבה, והדביקו אותה בכתבה המקורית.</p>' +
+      '<textarea rows="4" dir="rtl" placeholder="מה הייתם רוצים להגיד לקוראים של הכתבה הזו? עובדות ומילים מכבדות משכנעות יותר."></textarea>' +
+      '<div class="amb-row"><label>לתרגם ל: <select>' + opts + "</select></label></div>" +
+      '<div class="amb-row"><button type="button" class="amb-go">1. תרגמו</button>' +
+      '<a class="amb-open" href="' + link.href + '" target="_blank" rel="noopener nofollow">2. פתחו את הכתבה והדביקו</a></div>' +
+      '<p class="amb-n">התרגום נפתח ב־Google Translate. שם לחצו על כפתור ההעתקה, ואז פתחו את הכתבה והדביקו בתגובות.</p>';
+    btn.closest(".meta").after(box);
+    var ta = box.querySelector("textarea");
+    ta.focus();
+    box.querySelector(".amb-go").addEventListener("click", function () {
+      var t = ta.value.trim();
+      if (!t) { ta.focus(); ta.placeholder = "קודם כתבו כאן את התגובה שלכם בעברית"; return; }
+      var to = box.querySelector("select").value;
+      window.open("https://translate.google.com/?sl=iw&tl=" + encodeURIComponent(to) +
+        "&text=" + encodeURIComponent(t) + "&op=translate", "_blank", "noopener");
+      if (window.goatcounter && window.goatcounter.count) {
+        try { window.goatcounter.count({ path: "ambassador-translate", event: true }); } catch (e) {}
+      }
+    });
+  });
+})();

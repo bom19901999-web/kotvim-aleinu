@@ -64,7 +64,8 @@ def item_html(a, prefix=""):
         f'<h3 dir="auto">{e(headline(a))}</h3></a>{orig}'
         f'<div class="meta"><span>מאת <b>{src}</b> בתאריך</span> '
         f'<time datetime="{e(a["seen"])}"><span class="date">{t:%d/%m}</span> <span class="time">{t:%H:%M}</span></time>'
-        f'<span class="tag">{tag}</span>{comments}</div></article>'
+        f'<span class="tag">{tag}</span>{comments}'
+        f'<button type="button" class="amb">✍️ הגיבו בשפה שלהם</button></div></article>'
     )
 
 
