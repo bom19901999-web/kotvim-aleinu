@@ -373,6 +373,10 @@ def main():
     except (FileNotFoundError, json.JSONDecodeError):
         items = []
     items.sort(key=lambda x: x["seen"], reverse=True)
+    if getattr(config, "HIDE_UNTRANSLATED", True):
+        # מציגים רק כותרות שתורגמו לעברית, כדי שהאתר יישאר כולו בעברית
+        shown = [a for a in items if a.get("he")]
+        items = shown or items
 
     if os.path.isdir(SITE):
         shutil.rmtree(SITE)

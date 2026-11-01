@@ -222,7 +222,9 @@ def char_budget_today(store):
     days_left = (nxt.date() - now.date()).days  # כולל היום
     budget = getattr(config, "MONTHLY_CHAR_BUDGET", 1_900_000)
     per_day = max(0, budget - (month_chars - day_chars)) / max(1, days_left)
-    left = int(max(0, min(per_day - day_chars, budget - month_chars)))
+    # פריסה לאורך היום: עד עכשיו מותר רק החלק היחסי של היום, כדי שיהיו תרגומים גם בערב
+    frac = min(1.0, (now.hour * 60 + now.minute + 30) / 1440)
+    left = int(max(0, min(per_day * frac - day_chars, budget - month_chars)))
     return left, {"date": today, "month": month, "chars": month_chars, "day_chars": day_chars}
 
 
@@ -378,7 +380,7 @@ def main():
 
     todo = [x for x in fresh if x["he"] is None]
     # כותרות שלא תורגמו בריצות קודמות (למשל לפני שהוגדר מפתח) — מנסים שוב, בתוך אותה מגבלה
-    recent = (datetime.now(timezone.utc) - timedelta(hours=config.HOME_HOURS)).isoformat()
+    recent = (datetime.now(timezone.utc) - timedelta(hours=getattr(config, "RETRY_HOURS", 3))).isoformat()
     room = max(0, config.MAX_NEW_PER_RUN - len(todo))
     todo += [x for x in store if x.get("he") is None and x["seen"] >= recent][:room]
     left, state = char_budget_today(store)
