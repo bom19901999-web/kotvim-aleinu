@@ -389,11 +389,12 @@ def videos_page():
     else:
         listing = '<p class="empty">הסרטונים הראשונים ייאספו בשעה הקרובה. חזרו בקרוב.</p>'
     body = ('<section class="hero"><h1>🎬 וידאו: מה משדרים עלינו בעולם</h1>'
-            '<p class="tagline">סרטוני חדשות על ישראל מערוצי החדשות הגדולים בעולם, עם כותרת מתורגמת לעברית.</p></section>'
+            '<p class="tagline">סרטוני חדשות על ישראל מערוצי החדשות הגדולים בעולם, עם כותרת מתורגמת לעברית.</p>'
+            '<p class="vtip">💬 <b>כתוביות בעברית:</b> בזמן הניגון לחצו על ⚙️ ← <b>כתוביות</b> ← <b>תרגום אוטומטי</b> ← <b>עברית</b></p></section>'
             + listing +
             """<script>
 document.addEventListener('click',function(ev){var b=ev.target.closest&&ev.target.closest('.vthumb');if(!b)return;
-var f=document.createElement('iframe');f.src='https://www.youtube-nocookie.com/embed/'+b.dataset.id+'?autoplay=1&rel=0';
+var f=document.createElement('iframe');f.src='https://www.youtube-nocookie.com/embed/'+b.dataset.id+'?autoplay=1&rel=0&cc_load_policy=1&cc_lang_pref=iw&hl=iw';
 f.allow='autoplay; encrypted-media; picture-in-picture; fullscreen';f.allowFullscreen=true;f.className='vframe';b.replaceWith(f);});
 </script>""")
     return page("וידאו", "סרטוני חדשות על ישראל מערוצי החדשות בעולם, עם כותרות מתורגמות לעברית", body, path="videos.html")
