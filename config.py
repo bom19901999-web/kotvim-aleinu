@@ -176,3 +176,8 @@ YOUTUBE_CHANNELS = [
 ]
 VIDEO_KEEP_DAYS = 7
 VIDEO_MAX = 80
+
+# ---------- תגובות באתר (Supabase) ----------
+# כתובת הפרויקט ומפתח ה-anon (ציבורי, מותר שיופיע באתר). ריק = אין כפתור תגובות.
+SUPABASE_URL = "https://gouvatqjkigjnylxqxfr.supabase.co"
+SUPABASE_KEY = "sb_publishable_dv1sqE4AcSsbVHsjUWo5Ug_6oSKOD6w"

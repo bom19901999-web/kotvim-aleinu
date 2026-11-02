@@ -31,6 +31,8 @@ DAYS = ["שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"
 CUSDIS = getattr(config, "CUSDIS_APP_ID", "").strip()
 MAIL = getattr(config, "CONTACT_EMAIL", "").strip()
 GOAT = getattr(config, "GOATCOUNTER", "").strip()
+KC_URL = getattr(config, "SUPABASE_URL", "").strip().rstrip("/")
+KC_KEY = getattr(config, "SUPABASE_KEY", "").strip()
 
 e = html.escape
 
@@ -59,13 +61,14 @@ def item_html(a, prefix=""):
     tag = f"תורגם מ{e(lang_he)}" if translated else ("עברית" if code == "he" else f"{e(lang_he)}, טרם תורגם")
     comments = (f'<a class="cm" href="{prefix}a/{e(a["id"])}.html">💬 תגובות</a>' if CUSDIS else "")
     return (
-        f'<article class="item" data-lang="{e(code or "xx")}" data-country="{e(a["country"])}">'
+        f'<article class="item" data-id="{e(a["id"])}" data-lang="{e(code or "xx")}" data-country="{e(a["country"])}">'
         f'<a class="hl" href="{e(a["url"])}" target="_blank" rel="noopener nofollow">'
         f'<h3 dir="auto">{e(headline(a))}</h3></a>{orig}'
         f'<div class="meta"><span>מאת <b>{src}</b> בתאריך</span> '
         f'<time datetime="{e(a["seen"])}"><span class="date">{t:%d/%m}</span> <span class="time">{t:%H:%M}</span></time>'
         f'<span class="tag">{tag}</span>{comments}'
-        f'<button type="button" class="amb">✍️ הגיבו בשפה שלהם</button></div></article>'
+        + ('<button type="button" class="kcb">💬 תגובות</button>' if KC_URL else '')
+        + f'<button type="button" class="amb">✍️ הגיבו בשפה שלהם</button></div></article>'
     )
 
 
@@ -148,6 +151,7 @@ def page(title, desc, body, prefix="", path=""):
   {('<div>יצירת קשר: <a href="mailto:' + e(MAIL) + '">' + e(MAIL) + '</a></div>') if MAIL else ''}
 </footer>
 </div>
+{('<script>window.KC=' + json.dumps({"url": KC_URL, "key": KC_KEY}) + ';</script>') if KC_URL else ''}
 <script src="{prefix}app.js" defer></script>
 {('<script data-goatcounter="https://' + e(GOAT) + '.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>') if GOAT else ''}
 </body>

@@ -121,3 +121,98 @@
     });
   });
 })();
+
+/* תגובות באתר: לכל כותרת, עם סינון מילים בשרת */
+(function () {
+  var KC = window.KC;
+  if (!KC || !KC.url) return;
+  var admin = null;
+  try {
+    var m = location.search.match(/[?&]admin=([^&]+)/);
+    if (m) { localStorage.setItem("kc_admin", decodeURIComponent(m[1])); }
+    admin = localStorage.getItem("kc_admin");
+  } catch (e) {}
+  function rpc(fn, args) {
+    return fetch(KC.url + "/rest/v1/rpc/" + fn, {
+      method: "POST",
+      headers: KC.key.indexOf("sb_") === 0 ? { "apikey": KC.key, "Content-Type": "application/json" }
+        : { "apikey": KC.key, "Authorization": "Bearer " + KC.key, "Content-Type": "application/json" },
+      body: JSON.stringify(args)
+    }).then(function (r) {
+      return r.text().then(function (t) {
+        var d = t ? JSON.parse(t) : null;
+        if (!r.ok) { var err = new Error((d && d.message) || "error"); throw err; }
+        return d;
+      });
+    });
+  }
+  var MSG = { kc_blocked: "התגובה לא פורסמה: יש בה מילים לא מכבדות. נסו לנסח אחרת 🙏",
+    kc_link: "אי אפשר לפרסם קישורים בתגובות.", kc_rate: "יותר מדי תגובות בזמן קצר. נסו שוב בעוד שעה.",
+    kc_dup: "כבר פרסמתם את התגובה הזו.", kc_length: "השם צריך להיות 2–30 תווים, והתגובה 2–500 תווים." };
+  function when(iso) {
+    var d = new Date(iso), s = (Date.now() - d) / 1000;
+    if (s < 60) return "עכשיו";
+    if (s < 3600) return "לפני " + Math.floor(s / 60) + " דק׳";
+    if (s < 86400) return "לפני " + Math.floor(s / 3600) + " שע׳";
+    return d.toLocaleDateString("he-IL");
+  }
+  function el(tag, cls, text) { var x = document.createElement(tag); if (cls) x.className = cls; if (text != null) x.textContent = text; return x; }
+  function row(c) {
+    var li = el("li", "kc-c");
+    var h = el("div", "kc-h"); h.appendChild(el("b", null, c.name)); h.appendChild(el("span", "kc-t", " · " + when(c.created_at)));
+    var rep = el("button", "kc-r", "🚩"); rep.type = "button"; rep.title = "דווחו על תגובה פוגענית";
+    rep.onclick = function () { rpc("report_comment", { p_id: c.id }).then(function () { rep.textContent = "✓ דווח"; rep.disabled = true; }); };
+    h.appendChild(rep);
+    if (admin) {
+      var del = el("button", "kc-r", "🗑️"); del.type = "button";
+      del.onclick = function () { if (confirm("להסתיר את התגובה?")) rpc("admin_hide", { p_key: admin, p_id: c.id }).then(function () { li.remove(); }); };
+      h.appendChild(del);
+    }
+    li.appendChild(h); li.appendChild(el("p", "kc-b", c.body));
+    return li;
+  }
+  // מונה תגובות לכל הכותרות בעמוד
+  var arts = [].slice.call(document.querySelectorAll(".item[data-id]"));
+  if (arts.length) {
+    rpc("get_counts", { p_ids: arts.map(function (a) { return a.dataset.id; }) }).then(function (rows) {
+      var map = {}; (rows || []).forEach(function (r) { map[r.article_id] = r.n; });
+      arts.forEach(function (a) { var n = map[a.dataset.id]; var b = a.querySelector(".kcb"); if (b && n) { b.textContent = "💬 תגובות (" + n + ")"; b.classList.add("has"); } });
+    }).catch(function () {});
+  }
+  document.addEventListener("click", function (ev) {
+    var btn = ev.target.closest && ev.target.closest(".kcb");
+    if (!btn) return;
+    var art = btn.closest(".item"), open = art.querySelector(".kc-box");
+    if (open) { open.remove(); return; }
+    var box = el("div", "kc-box"), list = el("ul", "kc-list"), st = el("p", "kc-n", "טוען תגובות…");
+    box.appendChild(list); box.appendChild(st);
+    var f = el("form", "kc-f");
+    var name = el("input"); name.placeholder = "השם שלכם"; name.maxLength = 30; name.required = true;
+    try { name.value = localStorage.getItem("kc_name") || ""; } catch (e) {}
+    var ta = el("textarea"); ta.rows = 3; ta.maxLength = 500; ta.required = true; ta.placeholder = "מה דעתכם על הכותרת? שמרו על שפה מכבדת.";
+    var send = el("button", "kc-send", "פרסום תגובה"); send.type = "submit";
+    var note = el("p", "kc-n", "תגובות עם מילים פוגעניות או קישורים לא יתפרסמו. 🚩 לדיווח על תגובה.");
+    f.appendChild(name); f.appendChild(ta); f.appendChild(send); f.appendChild(note);
+    box.appendChild(f);
+    btn.closest(".meta").after(box);
+    rpc("get_comments", { p_article: art.dataset.id }).then(function (rows) {
+      st.textContent = rows && rows.length ? "" : "אין עדיין תגובות. היו הראשונים!";
+      (rows || []).forEach(function (c) { list.appendChild(row(c)); });
+    }).catch(function () { st.textContent = "לא הצלחנו לטעון תגובות כרגע."; });
+    f.onsubmit = function (e2) {
+      e2.preventDefault();
+      send.disabled = true; note.textContent = "שולח…";
+      try { localStorage.setItem("kc_name", name.value.trim()); } catch (e) {}
+      rpc("add_comment", { p_article: art.dataset.id, p_name: name.value, p_body: ta.value }).then(function (rows) {
+        var c = rows && rows[0];
+        if (c) { list.appendChild(row(c)); st.textContent = ""; }
+        ta.value = ""; note.textContent = "✓ התגובה פורסמה. תודה!";
+        var n = list.children.length; btn.textContent = "💬 תגובות (" + n + ")"; btn.classList.add("has");
+        if (window.goatcounter && window.goatcounter.count) { try { window.goatcounter.count({ path: "comment", event: true }); } catch (x) {} }
+      }).catch(function (err) {
+        var k = Object.keys(MSG).filter(function (m) { return String(err.message).indexOf(m) !== -1; })[0];
+        note.textContent = k ? MSG[k] : "משהו השתבש. נסו שוב.";
+      }).then(function () { send.disabled = false; });
+    };
+  });
+})();
