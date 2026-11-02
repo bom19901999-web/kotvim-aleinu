@@ -434,8 +434,15 @@ def fetch_channel(cid, name, country, lang):
         pub = en.findtext("a:published", "", _ATOM)
         if not vid or not title or not relevant(title):
             continue
-        out.append({"id": vid, "title": title, "he": None, "channel": name, "country": country,
-                    "lang": lang, "seen": pub})
+        desc = en.findtext("media:group/media:description", "", _ATOM) or ""
+        desc = re.split(r"(?i)\b(subscribe|follow us|follow\b|watch more|watch the|read more|download|sign up|visit our|click here|join our)", desc)[0]
+        desc = re.sub(r"https?://\S+|#\S+|@\S+", "", desc)
+        desc = re.sub(r"\s+", " ", desc).strip()
+        if len(desc) > 260:  # רק ההתחלה: התקציר, בלי רשימות קישורים
+            cut = desc[:260]
+            desc = cut[:cut.rfind(" ")] + "…" if " " in cut else cut
+        out.append({"id": vid, "title": title, "he": None, "desc": desc, "desc_he": None,
+                    "channel": name, "country": country, "lang": lang, "seen": pub})
     return out
 
 
@@ -451,25 +458,41 @@ def update_videos(store):
     # פעם בשעה מספיק
     if vids and os.environ.get("FORCE_VIDEOS") is None and int(time.time() // 900) % 4 != 0:
         return
-    known = {v["id"] for v in vids}
-    new = []
+    known = {v["id"]: v for v in vids}
+    new, back = [], []
     for c in chans:
         for v in fetch_channel(*c):
-            if v["id"] not in known:
-                known.add(v["id"])
+            old = known.get(v["id"])
+            if old is None:
+                known[v["id"]] = v
                 new.append(v)
+            elif "desc" not in old and v.get("desc"):  # סרטונים ישנים בלי תקציר
+                old["desc"], old["desc_he"] = v["desc"], None
+                back.append(old)
         time.sleep(0.5)
+    if back:
+        td = translate([v["desc"] for v in back], [lang_info(v["lang"])[0] for v in back])
+        for v, t in zip(back, td):
+            v["desc_he"] = t
     left, state = char_budget_today(store)
     todo, total = [], 0
     for v in new:  # כותרות וידאו מעטות; מתרגמים בתוך אותו תקציב
-        if total + len(v["title"]) <= max(left, 3000):
+        cost = len(v["title"]) + len(v.get("desc") or "")
+        if total + cost <= max(left, 6000):
             todo.append(v)
-            total += len(v["title"])
+            total += cost
     if todo:
         tr = translate([v["title"] for v in todo], [lang_info(v["lang"])[0] for v in todo])
         for v, t in zip(todo, tr):
             v["he"] = t
-        add_usage(state, sum(len(v["title"]) for v, t in zip(todo, tr) if t))
+        used = sum(len(v["title"]) for v, t in zip(todo, tr) if t)
+        withd = [v for v in todo if v.get("desc")]
+        if withd:  # תקציר בעברית: מה רואים בסרטון
+            td = translate([v["desc"] for v in withd], [lang_info(v["lang"])[0] for v in withd])
+            for v, t in zip(withd, td):
+                v["desc_he"] = t
+            used += sum(len(v["desc"]) for v, t in zip(withd, td) if t)
+        add_usage(state, used)
     cutoff = (datetime.now(timezone.utc) - timedelta(days=getattr(config, "VIDEO_KEEP_DAYS", 7))).isoformat()
     vids = [v for v in vids + new if (v.get("seen") or "") >= cutoff[:19]]
     vids.sort(key=lambda v: v.get("seen") or "", reverse=True)

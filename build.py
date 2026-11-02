@@ -378,7 +378,7 @@ def video_teaser():
             f'<span class="vt-live">🎬 וידאו</span></div>'
             f'<div class="vt-txt"><p class="vt-k">צפו: מה משדרים עלינו עכשיו בעולם</p>'
             f'<p class="vt-h">״{e(v["he"])}״</p>'
-            f'<p class="vt-m">{e(v["channel"])} · {len(vids)} סרטונים מ־{chans} ערוצי חדשות, עם כתוביות בעברית ←</p></div></a>')
+            f'<p class="vt-m">{e(v["channel"])} · {len(vids)} סרטונים מ־{chans} ערוצי חדשות, עם תקציר בעברית ←</p></div></a>')
 
 
 def videos_page():
@@ -402,6 +402,7 @@ def videos_page():
             f'<article class="vcard"><button type="button" class="vthumb" data-id="{e(v["id"])}" aria-label="נגן">'
             f'<img loading="lazy" src="https://i.ytimg.com/vi/{e(v["id"])}/hqdefault.jpg" alt=""><span class="vplay">▶</span></button>'
             f'<h3 dir="auto">{e(v.get("he") or v["title"])}</h3>{orig}'
+            + (f'<p class="vdesc">📝 <b>על מה הסרטון:</b> {e(v["desc_he"])}</p>' if v.get("desc_he") else "") +
             f'<div class="meta"><b>{e(v["channel"])}</b> ({e(country_he(v.get("country", "")))}) {when}</div></article>')
     if cards:
         listing = f'<p class="stats"><b>{len(cards)}</b> סרטונים מהשבוע האחרון</p><main class="vgrid">' + "".join(cards) + "</main>"
@@ -409,7 +410,7 @@ def videos_page():
         listing = '<p class="empty">הסרטונים הראשונים ייאספו בשעה הקרובה. חזרו בקרוב.</p>'
     body = ('<section class="hero"><h1>🎬 וידאו: מה משדרים עלינו בעולם</h1>'
             '<p class="tagline">סרטוני חדשות על ישראל מערוצי החדשות הגדולים בעולם, עם כותרת מתורגמת לעברית.</p>'
-            '<p class="vtip">💬 <b>כתוביות בעברית:</b> בזמן הניגון לחצו על ⚙️ ← <b>כתוביות</b> ← <b>תרגום אוטומטי</b> ← <b>עברית</b></p></section>'
+            '<p class="vtip">📝 מתחת לכל סרטון יש <b>תקציר בעברית</b>. 💬 אם לסרטון יש כתוביות, אפשר לנסות: ⚙️ ← כתוביות ← תרגום אוטומטי ← עברית (לא בכל סרטון זה זמין).</p></section>'
             + listing +
             """<script>
 document.addEventListener('click',function(ev){var b=ev.target.closest&&ev.target.closest('.vthumb');if(!b)return;
