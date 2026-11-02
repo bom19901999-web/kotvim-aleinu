@@ -137,7 +137,7 @@ def page(title, desc, body, prefix="", path=""):
 <body>
 <header class="bar"><div class="bar-in">
   <a class="brand" href="{prefix}index.html">{e(config.SITE_NAME)}</a>
-  <nav><a href="{prefix}index.html">ראשי</a><a href="{prefix}archive.html">ארכיון</a><a href="{prefix}about.html">אודות</a><a href="{prefix}contact.html">צור קשר</a><a class="jc" href="{prefix}community.html" lang="en" dir="ltr">🌍 Jewish Community</a><button type="button" id="install" class="inst" hidden>📲 התקן אפליקציה</button></nav>
+  <nav><a href="{prefix}index.html">ראשי</a><a href="{prefix}videos.html">🎬 וידאו</a><a href="{prefix}archive.html">ארכיון</a><a href="{prefix}about.html">אודות</a><a href="{prefix}contact.html">צור קשר</a><a class="jc" href="{prefix}community.html" lang="en" dir="ltr">🌍 Jewish Community</a><button type="button" id="install" class="inst" hidden>📲 התקן אפליקציה</button></nav>
 </div></header>
 <div id="install-help" class="install-help" hidden><div class="ih-in"><span class="tip"></span><button type="button" class="close" aria-label="סגור">✕</button></div></div>
 <div class="wrap">
@@ -362,6 +362,43 @@ To update or remove a listing, email <a href="mailto:{e(MAIL)}">{e(MAIL)}</a>.</
                 body, path="community.html")
 
 
+def videos_page():
+    try:
+        with open(os.path.join(ROOT, "data", "videos.json"), encoding="utf-8") as f:
+            vids = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        vids = []
+    if getattr(config, "HIDE_UNTRANSLATED", True):
+        vids = [v for v in vids if v.get("he")] or vids
+    cards = []
+    for v in vids:
+        try:
+            t = local(v["seen"])
+            when = f'<span class="date">{t:%d/%m}</span> <span class="time">{t:%H:%M}</span>'
+        except Exception:
+            when = ""
+        code, _ = lang_info(v.get("lang"))
+        orig = (f'<p class="orig" dir="auto" lang="{e(code)}">{e(v["title"])}</p>' if v.get("he") else "")
+        cards.append(
+            f'<article class="vcard"><button type="button" class="vthumb" data-id="{e(v["id"])}" aria-label="נגן">'
+            f'<img loading="lazy" src="https://i.ytimg.com/vi/{e(v["id"])}/hqdefault.jpg" alt=""><span class="vplay">▶</span></button>'
+            f'<h3 dir="auto">{e(v.get("he") or v["title"])}</h3>{orig}'
+            f'<div class="meta"><b>{e(v["channel"])}</b> ({e(country_he(v.get("country", "")))}) {when}</div></article>')
+    if cards:
+        listing = f'<p class="stats"><b>{len(cards)}</b> סרטונים מהשבוע האחרון</p><main class="vgrid">' + "".join(cards) + "</main>"
+    else:
+        listing = '<p class="empty">הסרטונים הראשונים ייאספו בשעה הקרובה. חזרו בקרוב.</p>'
+    body = ('<section class="hero"><h1>🎬 וידאו: מה משדרים עלינו בעולם</h1>'
+            '<p class="tagline">סרטוני חדשות על ישראל מערוצי החדשות הגדולים בעולם, עם כותרת מתורגמת לעברית.</p></section>'
+            + listing +
+            """<script>
+document.addEventListener('click',function(ev){var b=ev.target.closest&&ev.target.closest('.vthumb');if(!b)return;
+var f=document.createElement('iframe');f.src='https://www.youtube-nocookie.com/embed/'+b.dataset.id+'?autoplay=1&rel=0';
+f.allow='autoplay; encrypted-media; picture-in-picture; fullscreen';f.allowFullscreen=true;f.className='vframe';b.replaceWith(f);});
+</script>""")
+    return page("וידאו", "סרטוני חדשות על ישראל מערוצי החדשות בעולם, עם כותרות מתורגמות לעברית", body, path="videos.html")
+
+
 def write(path, text):
     with open(path, "w", encoding="utf-8") as f:
         f.write(text)
@@ -454,11 +491,12 @@ def main():
 </div>"""
     write(os.path.join(SITE, "contact.html"), page("צור קשר", "יצירת קשר עם " + config.SITE_NAME, contact, path="contact.html"))
     write(os.path.join(SITE, "community.html"), community_page())
+    write(os.path.join(SITE, "videos.html"), videos_page())
 
     # SEO
     if config.SITE_URL:
         base = config.SITE_URL.rstrip("/") + "/"
-        urls = ["", "archive.html", "about.html", "contact.html", "community.html"] + [f"day/{d.isoformat()}.html" for d in by_day]
+        urls = ["", "archive.html", "about.html", "contact.html", "community.html", "videos.html"] + [f"day/{d.isoformat()}.html" for d in by_day]
         sm = ['<?xml version="1.0" encoding="UTF-8"?>', '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
         sm += [f"<url><loc>{e(base + u)}</loc></url>" for u in urls]
         sm.append("</urlset>")

@@ -150,3 +150,29 @@ COMMUNITY_FORM_URL = ""
 # קישור CSV של גיליון התשובות (קובץ > שיתוף > פרסום באינטרנט > CSV).
 # רק שורות שבעמודה Approved כתוב בהן yes או כן יופיעו באתר.
 COMMUNITY_SHEET_CSV = ""
+
+# ---------- וידאו: ערוצי חדשות ביוטיוב (מזהה ערוץ, שם, מדינה, שפה) ----------
+YOUTUBE_CHANNELS = [
+    ("UCNye-wNBqNL5ZzHSJj3l8Bg", "Al Jazeera English", "Qatar", "English"),
+    ("UCfiwzLy-8yKzIbsmZTzxDgw", "الجزيرة", "Qatar", "Arabic"),
+    ("UCknLrEdhRCp1aegoMqRaCZg", "DW News", "Germany", "English"),
+    ("UCQfwfsi5VrQ8yKZ-UWmAEFg", "France 24 English", "France", "English"),
+    ("UCCCPCZNChQdGa9EkATeye4g", "France 24", "France", "French"),
+    ("UCoMdktPbSTixAyNGwb-UYkQ", "Sky News", "United Kingdom", "English"),
+    ("UCIJXOvggjKtCagMfxvcCzAA", "سكاي نيوز عربية", "United Arab Emirates", "Arabic"),
+    ("UC16niRr50-MSBwiO3YDb3RA", "BBC News", "United Kingdom", "English"),
+    ("UC7fWeaHhqgM4Ry-RMpM2YYw", "TRT World", "Turkey", "English"),
+    ("UCupvZG-5ko_eiXAupbDfxWw", "CNN", "United States", "English"),
+    ("UChqUTb7kYRX8-EiaN3XFrSQ", "Reuters", "United Kingdom", "English"),
+    ("UC52X5wxOL_s5yw0dQk7NtgA", "Associated Press", "United States", "English"),
+    ("UCeY0bbntWzzVIaj2z3QigXg", "NBC News", "United States", "English"),
+    ("UCBi2mrWuNuyYy4gbM6fU18Q", "ABC News", "United States", "English"),
+    ("UC8p1vwvWtl6T73JiExfWs1g", "CBS News", "United States", "English"),
+    ("UCXIJgqnII2ZOINSWNOGFThA", "Fox News", "United States", "English"),
+    ("UC_gUM8rL-Lrg6O3adPW9K1g", "WION", "India", "English"),
+    ("UCYPvAwZP8pZhSMW8qs7cVCw", "India Today", "India", "English"),
+    ("UCSrZ3UV4jOidv8ppoVuvW9Q", "Euronews", "France", "English"),
+    ("UCgrNz-aDmcr2uuto8_DL2jg", "CGTN", "China", "English"),
+]
+VIDEO_KEEP_DAYS = 7
+VIDEO_MAX = 80

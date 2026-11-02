@@ -406,6 +406,77 @@ def main():
     save_store(items)
     log(f"נוספו: {len(fresh)} | נשלחו לתרגום: {len(todo)} ({chars} תווים) | "
         f"דולגו: {skipped} | סה\"כ במאגר: {len(items)}")
+    try:
+        update_videos(items)
+    except Exception as e:  # וידאו הוא תוספת; לא מפילים בגללו את הריצה
+        log(f"שגיאת וידאו: {e}")
+
+
+# ---------- וידאו: סרטוני חדשות על ישראל מערוצי יוטיוב בעולם ----------
+VIDEOS = os.path.join(ROOT, "data", "videos.json")
+_ATOM = {"a": "http://www.w3.org/2005/Atom", "yt": "http://www.youtube.com/xml/schemas/2015",
+         "media": "http://search.yahoo.com/mrss/"}
+
+
+def fetch_channel(cid, name, country, lang):
+    url = "https://www.youtube.com/feeds/videos.xml?channel_id=" + cid
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": UA})
+        with urllib.request.urlopen(req, timeout=20) as r:
+            root = ET.fromstring(r.read())
+    except Exception as e:
+        log(f"  YouTube {name}: {e}")
+        return []
+    out = []
+    for en in root.findall("a:entry", _ATOM):
+        vid = en.findtext("yt:videoId", "", _ATOM)
+        title = (en.findtext("a:title", "", _ATOM) or "").strip()
+        pub = en.findtext("a:published", "", _ATOM)
+        if not vid or not title or not relevant(title):
+            continue
+        out.append({"id": vid, "title": title, "he": None, "channel": name, "country": country,
+                    "lang": lang, "seen": pub})
+    return out
+
+
+def update_videos(store):
+    chans = getattr(config, "YOUTUBE_CHANNELS", [])
+    if not chans:
+        return
+    try:
+        with open(VIDEOS, encoding="utf-8") as f:
+            vids = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        vids = []
+    # פעם בשעה מספיק
+    if vids and os.environ.get("FORCE_VIDEOS") is None and int(time.time() // 900) % 4 != 0:
+        return
+    known = {v["id"] for v in vids}
+    new = []
+    for c in chans:
+        for v in fetch_channel(*c):
+            if v["id"] not in known:
+                known.add(v["id"])
+                new.append(v)
+        time.sleep(0.5)
+    left, state = char_budget_today(store)
+    todo, total = [], 0
+    for v in new:  # כותרות וידאו מעטות; מתרגמים בתוך אותו תקציב
+        if total + len(v["title"]) <= max(left, 3000):
+            todo.append(v)
+            total += len(v["title"])
+    if todo:
+        tr = translate([v["title"] for v in todo], [lang_info(v["lang"])[0] for v in todo])
+        for v, t in zip(todo, tr):
+            v["he"] = t
+        add_usage(state, sum(len(v["title"]) for v, t in zip(todo, tr) if t))
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=getattr(config, "VIDEO_KEEP_DAYS", 7))).isoformat()
+    vids = [v for v in vids + new if (v.get("seen") or "") >= cutoff[:19]]
+    vids.sort(key=lambda v: v.get("seen") or "", reverse=True)
+    vids = vids[:getattr(config, "VIDEO_MAX", 80)]
+    with open(VIDEOS, "w", encoding="utf-8") as f:
+        json.dump(vids, f, ensure_ascii=False, separators=(",", ":"))
+    log(f"וידאו: {len(new)} חדשים, {len(vids)} בסך הכל")
 
 
 if __name__ == "__main__":
