@@ -362,6 +362,25 @@ To update or remove a listing, email <a href="mailto:{e(MAIL)}">{e(MAIL)}</a>.</
                 body, path="community.html")
 
 
+def video_teaser():
+    """ריבוע בולט בראש העמוד הראשי: הסרטון האחרון + קישור לעמוד הווידאו"""
+    try:
+        with open(os.path.join(ROOT, "data", "videos.json"), encoding="utf-8") as f:
+            vids = [v for v in json.load(f) if v.get("he")]
+    except (FileNotFoundError, json.JSONDecodeError):
+        vids = []
+    if not vids:
+        return ""
+    v = vids[0]
+    chans = len({x["channel"] for x in vids})
+    return (f'<a class="vteaser" href="videos.html">'
+            f'<div class="vt-img"><img src="https://i.ytimg.com/vi/{e(v["id"])}/hqdefault.jpg" alt=""><span class="vplay">▶</span>'
+            f'<span class="vt-live">🎬 וידאו</span></div>'
+            f'<div class="vt-txt"><p class="vt-k">צפו: מה משדרים עלינו עכשיו בעולם</p>'
+            f'<p class="vt-h">״{e(v["he"])}״</p>'
+            f'<p class="vt-m">{e(v["channel"])} · {len(vids)} סרטונים מ־{chans} ערוצי חדשות, עם כתוביות בעברית ←</p></div></a>')
+
+
 def videos_page():
     try:
         with open(os.path.join(ROOT, "data", "videos.json"), encoding="utf-8") as f:
@@ -438,6 +457,7 @@ def main():
     updated = now.astimezone(TZ)
     hero = (
         '<section class="hero">'
+        + video_teaser() +
         f'<p class="tagline">{e(config.SITE_TAGLINE)}</p>'
         + (f'<div class="cta-box"><p class="cta1">{e(config.SITE_CTA_TITLE)}</p>'
            f'<p class="cta2">{e(config.SITE_CTA_TEXT)}</p></div>' if getattr(config, "SITE_CTA_TITLE", "") else "")
