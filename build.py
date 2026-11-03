@@ -360,9 +360,12 @@ def build_feed(items, now):
         sub = f"{day} · {w_start:%H:%M}–{w_end:%H:%M} · {len(picked)} כותרות מ־{len(picked)} מדינות"
         img_ok = digest_image(os.path.join(SITE, "p", slug + ".png"), title, sub,
                               [(country_he(a["country"]) or a["domain"], a["he"].strip()) for a in picked])
-        body = (f'<section class="hero"><h1>🌍 {e(title)}</h1><p class="stats">{e(sub)}</p></section>'
+        sub_html = (f'{e(day)} · <span dir="ltr">{w_start:%H:%M}–{w_end:%H:%M}</span> · '
+                    f'{len(picked)} כותרות מ־{len(picked)} מדינות')
+        body = (f'<section class="hero"><h1>🌍 {e(title)}</h1><p class="stats">{sub_html}</p>'
+                '<a class="go allbtn" href="../index.html">📰 לכל הכותרות של היום, מעשרות מדינות ←</a></section>'
                 '<main id="list">' + "".join(item_html(a, "../") for a in picked) + "</main>"
-                '<p><a class="go" href="../index.html">לכל הכותרות מהעולם ←</a></p>')
+                '<p><a class="go allbtn" href="../index.html">📰 לכל הכותרות של היום ←</a></p>')
         write(os.path.join(SITE, "p", slug + ".html"),
               page(f"{title} · {w_start:%H:%M}–{w_end:%H:%M}", h0["he"].strip(), body, prefix="../",
                    path=f"p/{slug}.html", og_image=(f"{base}/p/{slug}.png" if img_ok else "")))
