@@ -105,7 +105,7 @@ def filters_html(items):
     )
 
 
-def page(title, desc, body, prefix="", path=""):
+def page(title, desc, body, prefix="", path="", og_image=""):
     full_title = f"{title} | {config.SITE_NAME}" if title != config.SITE_NAME else title
     canon = f'<link rel="canonical" href="{e(config.SITE_URL.rstrip("/") + "/" + path)}">' if config.SITE_URL else ""
     ads = ""
@@ -133,7 +133,7 @@ def page(title, desc, body, prefix="", path=""):
 <link rel="manifest" href="{prefix}manifest.webmanifest">
 <link rel="alternate" type="application/rss+xml" title="{e(config.SITE_NAME)}" href="{prefix}feed.xml">
 <meta name="theme-color" content="#3a8fcd">
-<meta property="og:image" content="{e(config.SITE_URL.rstrip("/") + "/og-image.png") if config.SITE_URL else ""}">
+<meta property="og:image" content="{e(og_image or (config.SITE_URL.rstrip("/") + "/og-image.png")) if config.SITE_URL else ""}">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:site_name" content="{e(config.SITE_NAME)}">
@@ -208,14 +208,127 @@ def flag(country):
     return "".join(chr(0x1F1E6 + ord(ch) - 65) for ch in c) if c else "🌍"
 
 
+# ---------- תמונה לכל סיכום בפייסבוק ----------
+_FONT = None
+
+
+def _font_path():
+    """פונט עברי: מהתיקייה, או הורדה חד-פעמית מ-Google Fonts (בשרת של GitHub)."""
+    for p in (os.environ.get("KC_FONT", ""), os.path.join(ROOT, "Heebo.ttf"), "/tmp/Heebo.ttf"):
+        if p and os.path.exists(p):
+            return p
+    try:
+        url = "https://raw.githubusercontent.com/google/fonts/main/ofl/heebo/Heebo%5Bwght%5D.ttf"
+        data = urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "kotvim"}), timeout=30).read()
+        with open("/tmp/Heebo.ttf", "wb") as f:
+            f.write(data)
+        return "/tmp/Heebo.ttf"
+    except Exception as ex:
+        print("פונט לתמונות: לא הורד", ex)
+        return None
+
+
+_MIRROR = str.maketrans("()[]{}<>", ")(][}{><")
+
+
+def _visual(s):
+    """סידור פשוט של טקסט עברי (עם מילים לועזיות ומספרים) מימין לשמאל, לציור בתמונה."""
+    import re as _re
+    parts = _re.split(r"([A-Za-z0-9][A-Za-z0-9 .,:%'’/&+\-–]*[A-Za-z0-9%]|[A-Za-z0-9])", s)
+    out = []
+    for i, part in enumerate(parts):
+        if not part:
+            continue
+        out.append(part if i % 2 else part[::-1].translate(_MIRROR))
+    return "".join(reversed(out))
+
+
+def digest_image(path, title, sub, rows):
+    """1200x630: כותרת, עד 3 כותרות מהעולם עם שם המדינה, וכתובת האתר."""
+    try:
+        from PIL import Image, ImageDraw, ImageFont
+    except ImportError:
+        try:  # בשרת של GitHub: התקנה חד-פעמית
+            import subprocess, sys as _sys
+            subprocess.run([_sys.executable, "-m", "pip", "install", "-q", "pillow"], check=True, timeout=180)
+            from PIL import Image, ImageDraw, ImageFont
+        except Exception as ex:
+            print("תמונות לפייסבוק: אין Pillow", ex)
+            return False
+    fp = _font_path()
+    if not fp:
+        return False
+
+    def F(size, w):
+        f = ImageFont.truetype(fp, size, layout_engine=ImageFont.Layout.BASIC)
+        try:
+            f.set_variation_by_axes([w])
+        except Exception:
+            pass
+        return f
+
+    W, H = 1200, 630
+    im = Image.new("RGB", (W, H), "#18208a")
+    d = ImageDraw.Draw(im)
+    for y in range(H):  # מעבר צבע עדין
+        t = y / H
+        d.line([(0, y), (W, y)], fill=(int(0x2a + (0x0d - 0x2a) * t), int(0x63 + (0x12 - 0x63) * t), int(0xb8 + (0x50 - 0xb8) * t)))
+    R = W - 50
+    ft, fs, fc, fh, fu = F(54, 900), F(28, 600), F(26, 800), F(36, 800), F(30, 800)
+    d.text((R, 38), _visual(title), font=ft, fill="#ffd84d", anchor="ra")
+    d.text((R, 104), _visual(sub), font=fs, fill="#dfe6ff", anchor="ra")
+    try:
+        logo = Image.open(os.path.join(ROOT, "icon-192.png")).convert("RGBA").resize((96, 96))
+        im.paste(logo, (50, 36), logo)
+    except Exception:
+        pass
+    y = 160
+    for country, head in rows[:3]:
+        words, lines, cur = head.split(), [], ""
+        for w_ in words:
+            cand = (cur + " " + w_).strip()
+            if fh.getlength(cand) <= W - 160:
+                cur = cand
+            else:
+                lines.append(cur)
+                cur = w_
+        lines.append(cur)
+        if len(lines) > 2:
+            lines = lines[:2]
+            while fh.getlength(lines[1] + "…") > W - 160 and " " in lines[1]:
+                lines[1] = lines[1].rsplit(" ", 1)[0]
+            lines[1] += "…"
+        box_h = 50 + 44 * len(lines)
+        d.rounded_rectangle([50, y, W - 50, y + box_h], radius=18, fill="#ffffff")
+        d.rectangle([W - 62, y, W - 50, y + box_h], fill="#d2131a")
+        d.text((R - 30, y + 12), _visual(country), font=fc, fill="#d2131a", anchor="ra")
+        for i, ln in enumerate(lines):
+            d.text((R - 30, y + 46 + 44 * i), _visual(ln), font=fh, fill="#18208a", anchor="ra")
+        y += box_h + 14
+        if y > H - 110:
+            break
+    url = "kotvim-aleinu.com"
+    tw = fu.getlength(url)
+    d.rounded_rectangle([50, H - 80, 50 + tw + 44, H - 26], radius=27, fill="#ffd84d")
+    d.text((72, H - 53), url, font=fu, fill="#18208a", anchor="lm")
+    d.text((R, H - 53), _visual("כל הכותרות מהעולם, בעברית"), font=fs, fill="#ffffff", anchor="rm")
+    im.save(path, optimize=True)
+    return True
+
+
+_INTROS = ["🌍 מה כתבו עלינו בעולם בשעות האחרונות:", "📰 עוד מהעיתונות העולמית על ישראל:",
+           "🗞️ ככה העולם מדבר עלינו עכשיו:", "🌐 כותרות על ישראל מרחבי העולם:"]
+
+
 def build_feed(items, now):
-    """feed.xml: פריט אחד לכל חלון של 3 שעות שהסתיים, עם עד 5 כותרות ממדינות שונות."""
+    """feed.xml: פריט אחד לכל חלון של 3 שעות שהסתיים, עם עד 5 כותרות ממדינות שונות,
+    ועמוד + תמונה ייחודיים לכל סיכום (התמונה מופיעה בפוסט בפייסבוק)."""
     loc_now = now.astimezone(TZ)
     end = loc_now.replace(minute=0, second=0, microsecond=0, hour=(loc_now.hour // 3) * 3)
     base = (config.SITE_URL or "").rstrip("/")
-    link = base + "/?utm_source=facebook&utm_campaign=auto"
+    os.makedirs(os.path.join(SITE, "p"), exist_ok=True)
     entries = []
-    for k in range(8):
+    for k in range(56):  # עמודים לשבוע אחורה (קישורים בפוסטים ישנים), בפיד רק 8 האחרונים
         w_end = end - timedelta(hours=3 * k)
         w_start = w_end - timedelta(hours=3)
         rows = [a for a in items if a.get("he") and w_start <= local(a["seen"]) < w_end
@@ -228,13 +341,33 @@ def build_feed(items, now):
                 break
         if len(picked) < 2:
             continue
-        lines = ["🌍 מה כתבו עלינו בעולם בשעות האחרונות:", ""]
-        for a in picked:
+        gid = w_end.strftime("%Y-%m-%dT%H")
+        slug = w_end.strftime("%Y-%m-%d-%H")
+        link = f"{base}/p/{slug}.html?utm_source=facebook&utm_campaign=auto"
+        # הטקסט: השורה הראשונה היא כותרת מושכת (רק היא נראית לפני "עוד")
+        h0 = picked[0]
+        c0 = country_he(h0["country"]) or h0["domain"]
+        lines = [f"{flag(h0['country'])} ב{c0} כותבים: \"{h0['he'].strip()}\"", "",
+                 _INTROS[w_end.hour // 3 % len(_INTROS)]]
+        for a in picked[1:]:
             c = country_he(a["country"]) or a["domain"]
             lines.append(f"{flag(a['country'])} {c}: \"{a['he'].strip()}\"")
-        lines += ["", f"כל הכותרות, מתורגמות לעברית ומתעדכנות כל רבע שעה 👇", link]
+        lines += ["", "כל הכותרות, מתורגמות לעברית ומתעדכנות כל רבע שעה 👇", link, "",
+                  "#ישראל #חדשות #כולנו_שגרירים"]
         text = "\n".join(lines)
-        gid = w_end.strftime("%Y-%m-%dT%H")
+        day = "היום" if w_end.date() == loc_now.date() else f"{w_end:%d/%m}"
+        title = "מה כתבו עלינו בעולם"
+        sub = f"{day} · {w_start:%H:%M}–{w_end:%H:%M} · {len(picked)} כותרות מ־{len(picked)} מדינות"
+        img_ok = digest_image(os.path.join(SITE, "p", slug + ".png"), title, sub,
+                              [(country_he(a["country"]) or a["domain"], a["he"].strip()) for a in picked])
+        body = (f'<section class="hero"><h1>🌍 {e(title)}</h1><p class="stats">{e(sub)}</p></section>'
+                '<main id="list">' + "".join(item_html(a, "../") for a in picked) + "</main>"
+                '<p><a class="go" href="../index.html">לכל הכותרות מהעולם ←</a></p>')
+        write(os.path.join(SITE, "p", slug + ".html"),
+              page(f"{title} · {w_start:%H:%M}–{w_end:%H:%M}", h0["he"].strip(), body, prefix="../",
+                   path=f"p/{slug}.html", og_image=(f"{base}/p/{slug}.png" if img_ok else "")))
+        if k >= 8:
+            continue
         entries.append(
             "<item>"
             f"<title>{e(f'מה כתבו עלינו בעולם, {w_start:%H:%M}-{w_end:%H:%M}')}</title>"
@@ -535,6 +668,10 @@ def main():
         robots = "User-agent: *\nAllow: /\n"
     write(os.path.join(SITE, "robots.txt"), robots)
     write(os.path.join(SITE, "feed.xml"), build_feed(items, now))
+    # עמוד שלא קיים (למשל קישור ישן מפייסבוק) מוביל לעמוד הראשי
+    write(os.path.join(SITE, "404.html"), page("העמוד לא נמצא", config.SITE_TAGLINE,
+          '<section class="hero"><h1>העמוד הזה כבר לא קיים</h1><p class="tagline">מעבירים אתכם לכותרות העדכניות…</p></section>'
+          '<script>setTimeout(function(){location.replace("/")},1200)</script>', prefix="/"))
     if config.CUSTOM_DOMAIN:
         write(os.path.join(SITE, "CNAME"), config.CUSTOM_DOMAIN.strip() + "\n")
     open(os.path.join(SITE, ".nojekyll"), "w").close()
