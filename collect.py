@@ -432,9 +432,10 @@ def fetch_channel(cid, name, country, lang):
         vid = en.findtext("yt:videoId", "", _ATOM)
         title = (en.findtext("a:title", "", _ATOM) or "").strip()
         pub = en.findtext("a:published", "", _ATOM)
-        if not vid or not title or not relevant(title):
-            continue
         desc = en.findtext("media:group/media:description", "", _ATOM) or ""
+        # סרטון רלוונטי אם הכותרת, או תחילת התיאור, עוסקים בישראל
+        if not vid or not title or not (relevant(title) or relevant(desc[:300])):
+            continue
         desc = re.split(r"(?i)\b(subscribe|follow us|follow\b|watch more|watch the|read more|download|sign up|visit our|click here|join our)", desc)[0]
         desc = re.sub(r"https?://\S+|#\S+|@\S+", "", desc)
         desc = re.sub(r"\s+", " ", desc).strip()
@@ -455,13 +456,12 @@ def update_videos(store):
             vids = json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
         vids = []
-    # פעם בשעה מספיק
-    if vids and os.environ.get("FORCE_VIDEOS") is None and int(time.time() // 900) % 4 != 0:
-        return
     known = {v["id"]: v for v in vids}
     new, back = [], []
     for c in chans:
-        for v in fetch_channel(*c):
+        got = fetch_channel(*c)
+        log(f"  YouTube {c[1]}: {len(got)} על ישראל")
+        for v in got:
             old = known.get(v["id"])
             if old is None:
                 known[v["id"]] = v
