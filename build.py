@@ -32,6 +32,9 @@ CUSDIS = getattr(config, "CUSDIS_APP_ID", "").strip()
 MAIL = getattr(config, "CONTACT_EMAIL", "").strip()
 GOAT = getattr(config, "GOATCOUNTER", "").strip()
 KC_URL = getattr(config, "SUPABASE_URL", "").strip().rstrip("/")
+import hashlib as _h
+ASSET_VER = _h.md5(b"".join(open(os.path.join(ROOT, f), "rb").read() for f in ("style.css", "app.js")
+                            if os.path.exists(os.path.join(ROOT, f)))).hexdigest()[:8]
 KC_KEY = getattr(config, "SUPABASE_KEY", "").strip()
 
 e = html.escape
@@ -124,7 +127,7 @@ def page(title, desc, body, prefix="", path=""):
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap">
-<link rel="stylesheet" href="{prefix}style.css">
+<link rel="stylesheet" href="{prefix}style.css?v={ASSET_VER}">
 <link rel="icon" type="image/png" href="{prefix}favicon.png">
 <link rel="apple-touch-icon" href="{prefix}apple-touch-icon.png">
 <link rel="manifest" href="{prefix}manifest.webmanifest">
@@ -152,7 +155,7 @@ def page(title, desc, body, prefix="", path=""):
 </footer>
 </div>
 {('<script>window.KC=' + json.dumps({"url": KC_URL, "key": KC_KEY}) + ';</script>') if KC_URL else ''}
-<script src="{prefix}app.js" defer></script>
+<script src="{prefix}app.js?v={ASSET_VER}" defer></script>
 {('<script data-goatcounter="https://' + e(GOAT) + '.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>') if GOAT else ''}
 </body>
 </html>
