@@ -384,6 +384,17 @@ def main():
     room = max(0, config.MAX_NEW_PER_RUN - len(todo))
     todo += [x for x in store if x.get("he") is None and x["seen"] >= recent][:room]
     left, state = char_budget_today(store)
+    # גיוון: סדר לסירוגין בין מדינות (החדשות קודם בכל מדינה), כדי שהתקציב יתחלק בין כולן
+    by_c, order = {}, []
+    for x in todo:
+        by_c.setdefault(x["country"], []).append(x)
+    queues = list(by_c.values())
+    while queues:
+        for q in list(queues):
+            order.append(q.pop(0))
+            if not q:
+                queues.remove(q)
+    todo = order
     picked, total = [], 0
     for x in todo:
         if total + len(x["title"]) > left:
@@ -439,8 +450,8 @@ def fetch_channel(cid, name, country, lang):
         desc = re.split(r"(?i)\b(subscribe|follow us|follow\b|watch more|watch the|read more|download|sign up|visit our|click here|join our)", desc)[0]
         desc = re.sub(r"https?://\S+|#\S+|@\S+", "", desc)
         desc = re.sub(r"\s+", " ", desc).strip()
-        if len(desc) > 260:  # רק ההתחלה: התקציר, בלי רשימות קישורים
-            cut = desc[:260]
+        if len(desc) > 180:  # רק ההתחלה: התקציר, בלי רשימות קישורים
+            cut = desc[:180]
             desc = cut[:cut.rfind(" ")] + "…" if " " in cut else cut
         out.append({"id": vid, "title": title, "he": None, "desc": desc, "desc_he": None,
                     "channel": name, "country": country, "lang": lang, "seen": pub})
@@ -470,15 +481,19 @@ def update_videos(store):
                 old["desc"], old["desc_he"] = v["desc"], None
                 back.append(old)
         time.sleep(0.5)
-    if back:
-        td = translate([v["desc"] for v in back], [lang_info(v["lang"])[0] for v in back])
-        for v, t in zip(back, td):
-            v["desc_he"] = t
+    if back:  # תקצירים לסרטונים ישנים: רק אם נשאר תקציב
+        lb, st_b = char_budget_today(store)
+        back = [v for v in back if len(v["desc"]) <= lb][:5]
+        if back:
+            td = translate([v["desc"] for v in back], [lang_info(v["lang"])[0] for v in back])
+            for v, t in zip(back, td):
+                v["desc_he"] = t
+            add_usage(st_b, sum(len(v["desc"]) for v, t in zip(back, td) if t))
     left, state = char_budget_today(store)
     todo, total = [], 0
-    for v in new:  # כותרות וידאו מעטות; מתרגמים בתוך אותו תקציב
+    for v in new:  # וידאו: בתוך אותו תקציב יומי, בלי לחרוג ממנו
         cost = len(v["title"]) + len(v.get("desc") or "")
-        if total + cost <= max(left, 6000):
+        if total + cost <= left:
             todo.append(v)
             total += cost
     if todo:
