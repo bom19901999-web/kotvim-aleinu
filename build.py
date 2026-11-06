@@ -32,6 +32,7 @@ CUSDIS = getattr(config, "CUSDIS_APP_ID", "").strip()
 MAIL = getattr(config, "CONTACT_EMAIL", "").strip()
 GOAT = getattr(config, "GOATCOUNTER", "").strip()
 KC_URL = getattr(config, "SUPABASE_URL", "").strip().rstrip("/")
+WA_PAGE = "wa-k7q2.html"  # עמוד פרטי: לא מקושר, וחסום למנועי חיפוש
 import hashlib as _h
 ASSET_VER = _h.md5(b"".join(open(os.path.join(ROOT, f), "rb").read() for f in ("style.css", "app.js")
                             if os.path.exists(os.path.join(ROOT, f)))).hexdigest()[:8]
@@ -524,6 +525,62 @@ def video_teaser():
             f'<p class="vt-m">{e(v["channel"])} · {len(vids)} סרטונים מ־{chans} ערוצי חדשות, עם תקציר בעברית ←</p></div></a>')
 
 
+# ---------- הודעה מוכנה לערוץ הוואטסאפ (עמוד פרטי, לא מקושר מהאתר) ----------
+def _words(t):
+    import re as _re
+    return {w for w in _re.findall(r"[֐-׿a-zA-Z0-9]{3,}", t or "")}
+
+
+def whatsapp_page(items, now):
+    since = now - timedelta(hours=12)
+    rows = [a for a in items if a.get("he") and lang_info(a["lang"])[0] != "he"
+            and local(a["seen"]) >= local(since.isoformat())]
+    picked, seen_c, seen_w = [], set(), []
+    for a in rows:  # מדינה אחת לכל כותרת, ונושאים שונים (בלי כותרות כמעט זהות)
+        if a["country"] in seen_c:
+            continue
+        w = _words(a["he"])
+        if any(len(w & o) / max(1, len(w | o)) > 0.35 for o in seen_w):
+            continue
+        picked.append(a); seen_c.add(a["country"]); seen_w.append(w)
+        if len(picked) == 6:
+            break
+    try:
+        with open(os.path.join(ROOT, "data", "videos.json"), encoding="utf-8") as f:
+            vids = [v for v in json.load(f) if v.get("he")]
+    except (FileNotFoundError, json.JSONDecodeError):
+        vids = []
+    base = (config.SITE_URL or "").rstrip("/")
+    loc = now.astimezone(TZ)
+    n24 = sum(1 for a in items if a.get("he") and local(a["seen"]) >= local((now - timedelta(hours=24)).isoformat()))
+    nc = len({a["country"] for a in items if a.get("he") and local(a["seen"]) >= local((now - timedelta(hours=24)).isoformat())})
+    part = "בוקר" if loc.hour < 12 else ("צהריים" if loc.hour < 17 else "ערב")
+    lines = [f"🌍 *מה כתבו עלינו בעולם* | {part} {loc:%d.%m}",
+             f"{n24} כותרות מ־{nc} מדינות ב־24 השעות האחרונות. הנה המעניינות:", ""]
+    for a in picked:
+        c = country_he(a["country"]) or a["domain"]
+        lines.append(f"{flag(a['country'])} *{c}:* \"{a['he'].strip()}\"")
+    if vids:
+        v = vids[0]
+        lines += ["", f"🎬 *וידאו:* {v['channel']}: \"{v['he'].strip()}\"",
+                  f"👉 {base}/videos.html?utm_source=whatsapp&utm_campaign=channel"]
+    lines += ["", "✍️ ראיתם כותרת שמעוותת את המציאות? הגיבו בשפה שלהם, ישר מהאתר.", "",
+              "📰 כל הכותרות בעברית 👇", f"{base}/?utm_source=whatsapp&utm_campaign=channel", "",
+              "כולנו שגרירים 🇮🇱"]
+    text = "\n".join(lines)
+    body = ('<section class="hero"><h1>📱 הודעה מוכנה לערוץ הוואטסאפ</h1>'
+            f'<p class="stats">עודכן ב־<b>{loc:%H:%M}</b> · מתעדכן לבד כל רבע שעה, מהכותרות של 12 השעות האחרונות</p></section>'
+            '<p><button type="button" id="wacopy" class="go wabtn">📋 העתק את ההודעה</button> '
+            '<span id="wadone" class="wadone" hidden>✓ הועתק! עכשיו הדבק בערוץ</span></p>'
+            f'<textarea id="watext" class="watext" rows="22" dir="rtl">{e(text)}</textarea>'
+            '<p class="note">אפשר לערוך את הטקסט לפני ההעתקה. הכוכביות (*) מודגשות בוואטסאפ.</p>'
+            """<script>document.getElementById('wacopy').onclick=function(){var t=document.getElementById('watext');
+t.select();var ok=function(){var d=document.getElementById('wadone');d.hidden=false;setTimeout(function(){d.hidden=true},4000)};
+if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t.value).then(ok,function(){document.execCommand('copy');ok()})}
+else{document.execCommand('copy');ok()}};</script>""")
+    return page("הודעה לערוץ הוואטסאפ", "עמוד פנימי", body, path=WA_PAGE)
+
+
 def videos_page():
     try:
         with open(os.path.join(ROOT, "data", "videos.json"), encoding="utf-8") as f:
@@ -657,6 +714,7 @@ def main():
     write(os.path.join(SITE, "contact.html"), page("צור קשר", "יצירת קשר עם " + config.SITE_NAME, contact, path="contact.html"))
     write(os.path.join(SITE, "community.html"), community_page())
     write(os.path.join(SITE, "videos.html"), videos_page())
+    write(os.path.join(SITE, WA_PAGE), whatsapp_page(items, now))
 
     # SEO
     if config.SITE_URL:
@@ -666,9 +724,9 @@ def main():
         sm += [f"<url><loc>{e(base + u)}</loc></url>" for u in urls]
         sm.append("</urlset>")
         write(os.path.join(SITE, "sitemap.xml"), "\n".join(sm))
-        robots = f"User-agent: *\nAllow: /\nSitemap: {base}sitemap.xml\n"
+        robots = f"User-agent: *\nDisallow: /{WA_PAGE}\nAllow: /\nSitemap: {base}sitemap.xml\n"
     else:
-        robots = "User-agent: *\nAllow: /\n"
+        robots = f"User-agent: *\nDisallow: /{WA_PAGE}\nAllow: /\n"
     write(os.path.join(SITE, "robots.txt"), robots)
     write(os.path.join(SITE, "feed.xml"), build_feed(items, now))
     # עמוד שלא קיים (למשל קישור ישן מפייסבוק) מוביל לעמוד הראשי

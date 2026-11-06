@@ -151,3 +151,6 @@ footer{font-size:13px;color:var(--muted);border-top:1px solid var(--line);paddin
 .kcb{margin-inline-start:auto}.kcb+.amb{margin-inline-start:0}
 .allbtn{display:inline-block;margin-top:8px;font-size:17px}
 [hidden]{display:none!important}
+.wabtn{font-size:18px;border:none;cursor:pointer}
+.wadone{color:#0a7d2c;font-weight:800;margin-inline-start:8px}
+.watext{width:100%;font:16px/1.5 var(--font);padding:10px;border:1.5px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
