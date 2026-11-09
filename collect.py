@@ -490,8 +490,13 @@ def update_videos(store):
                 v["desc_he"] = t
             add_usage(st_b, sum(len(v["desc"]) for v, t in zip(back, td) if t))
     left, state = char_budget_today(store)
+    # וידאו מקבל שמורה קטנה משלו, כדי שהכותרות לא "יאכלו" את כל התקציב והריבוע לא ייעלם.
+    # מתרגמים גם סרטונים ישנים שעוד לא תורגמו (לא רק חדשים).
+    left = max(left, getattr(config, "VIDEO_RUN_CHARS", 1500))
+    waiting = [v for v in new] + [v for v in vids if not v.get("he")]
+    waiting.sort(key=lambda v: v.get("seen") or "", reverse=True)
     todo, total = [], 0
-    for v in new:  # וידאו: בתוך אותו תקציב יומי, בלי לחרוג ממנו
+    for v in waiting:
         cost = len(v["title"]) + len(v.get("desc") or "")
         if total + cost <= left:
             todo.append(v)
@@ -501,7 +506,7 @@ def update_videos(store):
         for v, t in zip(todo, tr):
             v["he"] = t
         used = sum(len(v["title"]) for v, t in zip(todo, tr) if t)
-        withd = [v for v in todo if v.get("desc")]
+        withd = [v for v in todo if v.get("desc") and v.get("he")]
         if withd:  # תקציר בעברית: מה רואים בסרטון
             td = translate([v["desc"] for v in withd], [lang_info(v["lang"])[0] for v in withd])
             for v, t in zip(withd, td):
