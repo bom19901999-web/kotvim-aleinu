@@ -214,23 +214,31 @@ def char_budget_today(store):
     if u.get("month") == month:
         month_chars = u.get("chars", 0)
         day_chars = u.get("day_chars", 0) if u.get("date") == today else 0
+        video_day = u.get("video_day", 0) if u.get("date") == today else 0
     else:  # חודש חדש, או מעבר מהשיטה הישנה: מעריכים לפי מה שכבר תורגם החודש
         month_chars = sum(len(x["title"]) for x in store
                           if x.get("he") and x["he"] != x["title"] and x["seen"][:7] == month)
         day_chars = 0
+        video_day = 0
     nxt = (now.replace(day=28) + timedelta(days=4)).replace(day=1)
     days_left = (nxt.date() - now.date()).days  # כולל היום
     budget = getattr(config, "MONTHLY_CHAR_BUDGET", 1_900_000)
-    per_day = max(0, budget - (month_chars - day_chars)) / max(1, days_left)
+    per_day = max(0, budget - (month_chars - day_chars - video_day)) / max(1, days_left)
     # פריסה לאורך היום: עד עכשיו מותר רק החלק היחסי של היום, כדי שיהיו תרגומים גם בערב
     frac = min(1.0, (now.hour * 60 + now.minute + 30) / 1440)
     left = int(max(0, min(per_day * frac - day_chars, budget - month_chars)))
-    return left, {"date": today, "month": month, "chars": month_chars, "day_chars": day_chars}
+    return left, {"date": today, "month": month, "chars": month_chars, "day_chars": day_chars,
+                  "video_day": video_day}
 
 
-def add_usage(state, chars):
+def add_usage(state, chars, video=False):
+    """שומר כמה תורגם. וידאו נספר בחודשי, אבל לא בתקציב היומי של הכותרות (יש לו שמורה משלו)."""
     os.makedirs(os.path.dirname(USAGE), exist_ok=True)
-    state = dict(state, chars=state["chars"] + chars, day_chars=state["day_chars"] + chars)
+    state = dict(state, chars=state["chars"] + chars)
+    if video:
+        state["video_day"] = state.get("video_day", 0) + chars
+    else:
+        state["day_chars"] = state["day_chars"] + chars
     with open(USAGE, "w", encoding="utf-8") as f:
         json.dump(state, f)
 
@@ -488,13 +496,19 @@ def update_videos(store):
             td = translate([v["desc"] for v in back], [lang_info(v["lang"])[0] for v in back])
             for v, t in zip(back, td):
                 v["desc_he"] = t
-            add_usage(st_b, sum(len(v["desc"]) for v, t in zip(back, td) if t))
+            add_usage(st_b, sum(len(v["desc"]) for v, t in zip(back, td) if t), video=True)
+    # קודם מחליטים אילו סרטונים נשארים (7 ימים, עד 80), ורק אותם מתרגמים.
+    # (באג קודם: סרטונים שנחתכו מהרשימה זוהו שוב כ"חדשים" בכל ריצה ותורגמו שוב ושוב,
+    #  וזה אכל את כל תקציב התרגום של הכותרות.)
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=getattr(config, "VIDEO_KEEP_DAYS", 7))).isoformat()
+    vids = [v for v in vids + new if (v.get("seen") or "") >= cutoff[:19]]
+    vids.sort(key=lambda v: v.get("seen") or "", reverse=True)
+    vids = vids[:getattr(config, "VIDEO_MAX", 80)]
     left, state = char_budget_today(store)
-    # וידאו מקבל שמורה קטנה משלו, כדי שהכותרות לא "יאכלו" את כל התקציב והריבוע לא ייעלם.
-    # מתרגמים גם סרטונים ישנים שעוד לא תורגמו (לא רק חדשים).
-    left = max(left, getattr(config, "VIDEO_RUN_CHARS", 1500))
-    waiting = [v for v in new] + [v for v in vids if not v.get("he")]
-    waiting.sort(key=lambda v: v.get("seen") or "", reverse=True)
+    # שמורה יומית קטנה ונפרדת לווידאו, כדי שהריבוע לא ייעלם וגם לא יאכל את תקציב הכותרות
+    vday = state.get("video_day", 0)
+    left = max(left, getattr(config, "VIDEO_DAY_CHARS", 8000) - vday)
+    waiting = [v for v in vids if not v.get("he")]
     todo, total = [], 0
     for v in waiting:
         cost = len(v["title"]) + len(v.get("desc") or "")
@@ -512,11 +526,7 @@ def update_videos(store):
             for v, t in zip(withd, td):
                 v["desc_he"] = t
             used += sum(len(v["desc"]) for v, t in zip(withd, td) if t)
-        add_usage(state, used)
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=getattr(config, "VIDEO_KEEP_DAYS", 7))).isoformat()
-    vids = [v for v in vids + new if (v.get("seen") or "") >= cutoff[:19]]
-    vids.sort(key=lambda v: v.get("seen") or "", reverse=True)
-    vids = vids[:getattr(config, "VIDEO_MAX", 80)]
+        add_usage(state, used, video=True)
     with open(VIDEOS, "w", encoding="utf-8") as f:
         json.dump(vids, f, ensure_ascii=False, separators=(",", ":"))
     log(f"וידאו: {len(new)} חדשים, {len(vids)} בסך הכל")
