@@ -503,11 +503,16 @@ def update_videos(store):
     cutoff = (datetime.now(timezone.utc) - timedelta(days=getattr(config, "VIDEO_KEEP_DAYS", 7))).isoformat()
     vids = [v for v in vids + new if (v.get("seen") or "") >= cutoff[:19]]
     vids.sort(key=lambda v: v.get("seen") or "", reverse=True)
-    vids = vids[:getattr(config, "VIDEO_MAX", 80)]
+    # שומרים קודם את הסרטונים שכבר תורגמו (שלא יידחקו החוצה ע"י חדשים לא מתורגמים),
+    # ומשאירים עד 30 מקומות לחדשים שמחכים לתרגום.
+    vmax = getattr(config, "VIDEO_MAX", 80)
+    waiting_new = [v for v in vids if not v.get("he")][:30]
+    done = [v for v in vids if v.get("he")][:vmax - len(waiting_new)]
+    vids = sorted(done + waiting_new, key=lambda v: v.get("seen") or "", reverse=True)
     left, state = char_budget_today(store)
     # שמורה יומית קטנה ונפרדת לווידאו, כדי שהריבוע לא ייעלם וגם לא יאכל את תקציב הכותרות
     vday = state.get("video_day", 0)
-    left = max(left, getattr(config, "VIDEO_DAY_CHARS", 8000) - vday)
+    left = max(left, getattr(config, "VIDEO_DAY_CHARS", 10000) - vday)
     waiting = [v for v in vids if not v.get("he")]
     todo, total = [], 0
     for v in waiting:
